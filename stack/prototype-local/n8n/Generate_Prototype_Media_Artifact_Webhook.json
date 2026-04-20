@@ -1,0 +1,230 @@
+{
+  "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000301",
+  "name": "Generate Prototype Media Artifact Webhook",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "versionId": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000302",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "prototype-media-artifact",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000310",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        220,
+        280
+      ],
+      "webhookId": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000311"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const source = ($json.body && Object.keys($json.body).length ? $json.body : $json.query) || {};\nconst uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;\nconst fileName = `prototype-smoke-${uniqueSuffix}.mp4`;\nconst outputDir = '/data/shared/prototype-media';\nconst outputPath = `${outputDir}/${fileName}`;\nreturn [{ json: { prompt: String(source.prompt || 'prototype media smoke').trim(), file_name: fileName, output_dir: outputDir, output_path: outputPath, bucket_name: 'artifacts', folder_key: 'prototype-media', object_key: `prototype-media/${fileName}` } }];"
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000312",
+      "name": "Prepare Artifact",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "executeOnce": true,
+        "command": "={{ `mkdir -p ${$json.output_dir} && ffmpeg -y -f lavfi -i testsrc=size=640x360:rate=24 -f lavfi -i sine=frequency=440:sample_rate=44100 -t 1 -c:v libx264 -pix_fmt yuv420p -c:a aac ${$json.output_path}` }}"
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000313",
+      "name": "Generate Test Video",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        760,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "filePath": "={{ $('Prepare Artifact').item.json.output_path }}",
+        "dataPropertyName": "data"
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000314",
+      "name": "Read Generated Video",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        1020,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "upload",
+        "bucketName": "={{ $('Prepare Artifact').item.json.bucket_name }}",
+        "fileName": "={{ $('Prepare Artifact').item.json.file_name }}",
+        "binaryData": true,
+        "binaryPropertyName": "data",
+        "additionalFields": {
+          "parentFolderKey": "prototype-media"
+        }
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000315",
+      "name": "Upload To MinIO",
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 1,
+      "position": [
+        1280,
+        280
+      ],
+      "credentials": {
+        "s3": {
+          "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000200",
+          "name": "Prototype Local MinIO"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "output",
+              "name": "output",
+              "type": "string",
+              "value": "={{ `Generated prototype media artifact: s3://${$('Prepare Artifact').item.json.bucket_name}/${$('Prepare Artifact').item.json.object_key}` }}"
+            },
+            {
+              "id": "bucket",
+              "name": "bucket",
+              "type": "string",
+              "value": "={{ $('Prepare Artifact').item.json.bucket_name }}"
+            },
+            {
+              "id": "objectKey",
+              "name": "objectKey",
+              "type": "string",
+              "value": "={{ $('Prepare Artifact').item.json.object_key }}"
+            },
+            {
+              "id": "fileName",
+              "name": "fileName",
+              "type": "string",
+              "value": "={{ $('Prepare Artifact').item.json.file_name }}"
+            },
+            {
+              "id": "localPath",
+              "name": "localPath",
+              "type": "string",
+              "value": "={{ $('Prepare Artifact').item.json.output_path }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000316",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1540,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000317",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1800,
+        280
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare Artifact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Artifact": {
+      "main": [
+        [
+          {
+            "node": "Generate Test Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Test Video": {
+      "main": [
+        [
+          {
+            "node": "Read Generated Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Generated Video": {
+      "main": [
+        [
+          {
+            "node": "Upload To MinIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload To MinIO": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

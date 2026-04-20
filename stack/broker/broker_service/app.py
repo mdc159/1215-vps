@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
@@ -17,17 +17,74 @@ def utc_now() -> datetime:
 
 @dataclass
 class BrokerConfig:
-    database_url: str
+    database_conninfo: str
+    database_source: str
+    database_host: str | None
+    database_name: str | None
+    database_user: str | None
     service_name: str
 
 
 def load_config() -> BrokerConfig:
-    database_url = os.environ.get("BROKER_DATABASE_URL")
-    if not database_url:
-        raise RuntimeError("BROKER_DATABASE_URL is required")
+    database_host = os.environ.get("BROKER_DATABASE_HOST")
+    database_port = os.environ.get("BROKER_DATABASE_PORT", "5432")
+    database_name = os.environ.get("BROKER_DATABASE_NAME")
+    database_user = os.environ.get("BROKER_DATABASE_USER")
+    database_password = os.environ.get("BROKER_DATABASE_PASSWORD")
+
+    if any(
+        value is not None
+        for value in (
+            database_host,
+            database_name,
+            database_user,
+            database_password,
+        )
+    ):
+        missing = [
+            name
+            for name, value in (
+                ("BROKER_DATABASE_HOST", database_host),
+                ("BROKER_DATABASE_NAME", database_name),
+                ("BROKER_DATABASE_USER", database_user),
+                ("BROKER_DATABASE_PASSWORD", database_password),
+            )
+            if not value
+        ]
+        if missing:
+            raise RuntimeError(
+                "broker database configuration is incomplete; missing: "
+                + ", ".join(missing)
+            )
+
+        database_conninfo = psycopg.conninfo.make_conninfo(
+            host=database_host,
+            port=database_port,
+            dbname=database_name,
+            user=database_user,
+            password=database_password,
+        )
+        database_source = "parts"
+    else:
+        database_url = os.environ.get("BROKER_DATABASE_URL")
+        if not database_url:
+            raise RuntimeError(
+                "set BROKER_DATABASE_URL or BROKER_DATABASE_HOST/"
+                "BROKER_DATABASE_NAME/BROKER_DATABASE_USER/"
+                "BROKER_DATABASE_PASSWORD"
+            )
+        database_conninfo = database_url
+        database_source = "url"
+        database_host = None
+        database_name = None
+        database_user = None
 
     return BrokerConfig(
-        database_url=database_url,
+        database_conninfo=database_conninfo,
+        database_source=database_source,
+        database_host=database_host,
+        database_name=database_name,
+        database_user=database_user,
         service_name=os.environ.get("BROKER_SERVICE_NAME", "broker-1215"),
     )
 
@@ -35,7 +92,7 @@ def load_config() -> BrokerConfig:
 @contextmanager
 def db_cursor():
     config = load_config()
-    with psycopg.connect(config.database_url) as connection:
+    with psycopg.connect(config.database_conninfo) as connection:
         with connection.cursor(row_factory=psycopg.rows.dict_row) as cursor:
             yield cursor
         connection.commit()
@@ -127,6 +184,10 @@ def create_session(session: SessionCreate) -> dict[str, Any]:
             """
             INSERT INTO broker.sessions (session_id, node_id, surface, metadata_json)
             VALUES (%s, %s, %s, %s)
+            ON CONFLICT (session_id) DO UPDATE SET
+                node_id = EXCLUDED.node_id,
+                surface = EXCLUDED.surface,
+                metadata_json = EXCLUDED.metadata_json
             RETURNING session_id, node_id, surface, metadata_json, created_at
             """,
             (
@@ -245,4 +306,11 @@ def list_events(limit: int = Query(default=50, ge=1, le=500)) -> dict[str, Any]:
 
 @app.get("/config")
 def show_config() -> dict[str, Any]:
-    return asdict(load_config())
+    config = load_config()
+    return {
+        "database_source": config.database_source,
+        "database_host": config.database_host,
+        "database_name": config.database_name,
+        "database_user": config.database_user,
+        "service_name": config.service_name,
+    }

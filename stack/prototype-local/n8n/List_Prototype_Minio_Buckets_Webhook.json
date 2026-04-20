@@ -1,0 +1,115 @@
+{
+  "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000201",
+  "name": "List Prototype MinIO Buckets Webhook",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "versionId": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000202",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "nodes": [
+    {
+      "parameters": {
+        "path": "prototype-minio-buckets",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000210",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        220,
+        280
+      ],
+      "webhookId": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000211"
+    },
+    {
+      "parameters": {
+        "resource": "bucket",
+        "operation": "getAll",
+        "returnAll": true
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000212",
+      "name": "S3",
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 1,
+      "position": [
+        520,
+        280
+      ],
+      "credentials": {
+        "s3": {
+          "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000200",
+          "name": "Prototype Local MinIO"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items = $input.all();\nconst buckets = items\n  .map((item) => item.json.Name)\n  .filter(Boolean)\n  .sort();\n\nreturn [{\n  json: {\n    buckets,\n    bucketCount: buckets.length,\n  },\n}];"
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000214",
+      "name": "Format Bucket List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000213",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1020,
+        280
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "S3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "S3": {
+      "main": [
+        [
+          {
+            "node": "Format Bucket List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Bucket List": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

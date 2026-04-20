@@ -1,0 +1,372 @@
+{
+  "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000003",
+  "name": "Get Prototype Postgres Tables Webhook",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "versionId": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000004",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "prototype-postgres-tables",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000020",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        220,
+        280
+      ],
+      "webhookId": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000021"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const source = ($json.body && Object.keys($json.body).length ? $json.body : $json.query) || {};\nconst uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;\nconst rawSessionId = (source.sessionId || '').trim();\nconst rawMessageId = (source.messageId || '').trim();\nconst userId = (source.userId || '').trim();\nconst chatInput = String(source.chatInput || '').trim();\nconst sessionId = rawSessionId || `adhoc-session-${uniqueSuffix}`;\nconst messageKey = rawMessageId || uniqueSuffix;\nconst runId = `owui-run-${messageKey}`;\nconst eventId = `owui-event-${messageKey}`;\nconst occurredAt = new Date().toISOString();\n\nreturn [{\n  json: {\n    chat_input: chatInput,\n    user_id: userId,\n    session_id: sessionId,\n    message_id: rawMessageId,\n    run_id: runId,\n    event_id: eventId,\n    idempotency_key: `openwebui:${messageKey}`,\n    occurred_at: occurredAt,\n    node_id: 'prototype-local-openwebui',\n    node_role: 'openwebui.pipe',\n    display_name: 'Prototype Local Open WebUI Pipe',\n    surface: 'openwebui',\n    metadata_json: {\n      source: 'openwebui.pipe',\n      webhook_path: 'prototype-postgres-tables',\n      user_id: userId,\n      raw_session_id: rawSessionId || null,\n      raw_message_id: rawMessageId || null\n    }\n  }\n}];"
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000025",
+      "name": "Normalize Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://broker:8090/nodes",
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { node_id: $json.node_id, node_role: $json.node_role, display_name: $json.display_name, metadata_json: $json.metadata_json } }}",
+        "options": {}
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000026",
+      "name": "Upsert Broker Node",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        740,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://broker:8090/sessions",
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { session_id: $('Normalize Request').item.json.session_id, node_id: $('Normalize Request').item.json.node_id, surface: $('Normalize Request').item.json.surface, metadata_json: { user_id: $('Normalize Request').item.json.user_id, message_id: $('Normalize Request').item.json.message_id, source: 'openwebui.pipe' } } }}",
+        "options": {}
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000027",
+      "name": "Create Broker Session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1000,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://broker:8090/runs",
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { run_id: $('Normalize Request').item.json.run_id, session_id: $('Normalize Request').item.json.session_id, run_kind: 'openwebui.n8n.pipe', status: 'started', metadata_json: { source: 'openwebui.pipe', user_id: $('Normalize Request').item.json.user_id } } }}",
+        "options": {}
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000028",
+      "name": "Start Broker Run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1260,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT table_schema, table_name\nFROM information_schema.tables\nWHERE table_schema IN ('public', 'broker')\n  AND table_type = 'BASE TABLE'\nORDER BY table_schema, table_name;",
+        "options": {}
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000022",
+      "name": "Postgres",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1520,
+        280
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000100",
+          "name": "Prototype Local Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldsToSummarize": {
+          "values": [
+            {
+              "aggregation": "concatenate",
+              "field": "table_schema"
+            },
+            {
+              "aggregation": "concatenate",
+              "field": "table_name"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000023",
+      "name": "Summarize",
+      "type": "n8n-nodes-base.summarize",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://broker:8090/runs",
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { run_id: $('Normalize Request').item.json.run_id, session_id: $('Normalize Request').item.json.session_id, run_kind: 'openwebui.n8n.pipe', status: 'completed', metadata_json: { source: 'openwebui.pipe', user_id: $('Normalize Request').item.json.user_id, table_count: (() => { const names = String($json.concatenated_table_name || '').split(',').filter(Boolean); return names.length; })() } } }}",
+        "options": {}
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000029",
+      "name": "Complete Broker Run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2040,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://broker:8090/events",
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { event_id: $('Normalize Request').item.json.event_id, event_type: 'workflow.completed', payload_version: 1, node_id: $('Normalize Request').item.json.node_id, session_id: $('Normalize Request').item.json.session_id, run_id: $('Normalize Request').item.json.run_id, idempotency_key: $('Normalize Request').item.json.idempotency_key, occurred_at: $('Normalize Request').item.json.occurred_at, payload_json: { chat_input: $('Normalize Request').item.json.chat_input, table_count: (() => { const names = String($('Summarize').item.json.concatenated_table_name || '').split(',').filter(Boolean); return names.length; })(), tables: (() => { const names = String($('Summarize').item.json.concatenated_table_name || '').split(',').filter(Boolean); const schemas = String($('Summarize').item.json.concatenated_table_schema || '').split(',').filter(Boolean); return names.map((name, index) => `${schemas[index]}.${name}`); })() }, metadata_json: { source: 'openwebui.pipe', user_id: $('Normalize Request').item.json.user_id, webhook_path: 'prototype-postgres-tables' } } }}",
+        "options": {}
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000030",
+      "name": "Create Completion Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2300,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "output",
+              "name": "output",
+              "type": "string",
+              "value": "={{ (() => { const names = String($('Summarize').item.json.concatenated_table_name || '').split(',').filter(Boolean); const schemas = String($('Summarize').item.json.concatenated_table_schema || '').split(',').filter(Boolean); const pairs = names.map((name, index) => `${schemas[index]}.${name}`); const preview = pairs.slice(0, 20).join(', '); const remainder = Math.max(pairs.length - 20, 0); const suffix = remainder > 0 ? ` (+${remainder} more)` : ''; return `Prototype tables: ${preview}${suffix}\\nContinuity recorded: session=${$('Normalize Request').item.json.session_id}, run=${$('Normalize Request').item.json.run_id}, event=${$('Normalize Request').item.json.event_id}`; })() }}"
+            },
+            {
+              "id": "tables",
+              "name": "tables",
+              "type": "array",
+              "value": "={{ (() => { const names = String($('Summarize').item.json.concatenated_table_name || '').split(',').filter(Boolean); const schemas = String($('Summarize').item.json.concatenated_table_schema || '').split(',').filter(Boolean); return names.map((name, index) => `${schemas[index]}.${name}`); })() }}"
+            },
+            {
+              "id": "tableCount",
+              "name": "tableCount",
+              "type": "number",
+              "value": "={{ (() => { const names = String($('Summarize').item.json.concatenated_table_name || '').split(',').filter(Boolean); return names.length; })() }}"
+            },
+            {
+              "id": "sessionId",
+              "name": "sessionId",
+              "type": "string",
+              "value": "={{ $('Normalize Request').item.json.session_id }}"
+            },
+            {
+              "id": "runId",
+              "name": "runId",
+              "type": "string",
+              "value": "={{ $('Normalize Request').item.json.run_id }}"
+            },
+            {
+              "id": "eventId",
+              "name": "eventId",
+              "type": "string",
+              "value": "={{ $('Normalize Request').item.json.event_id }}"
+            },
+            {
+              "id": "nodeId",
+              "name": "nodeId",
+              "type": "string",
+              "value": "={{ $('Normalize Request').item.json.node_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000031",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2560,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000024",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2820,
+        280
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Request": {
+      "main": [
+        [
+          {
+            "node": "Upsert Broker Node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Broker Node": {
+      "main": [
+        [
+          {
+            "node": "Create Broker Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Broker Session": {
+      "main": [
+        [
+          {
+            "node": "Start Broker Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start Broker Run": {
+      "main": [
+        [
+          {
+            "node": "Postgres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize": {
+      "main": [
+        [
+          {
+            "node": "Complete Broker Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complete Broker Run": {
+      "main": [
+        [
+          {
+            "node": "Create Completion Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Completion Event": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000001",
+  "name": "Get Prototype Postgres Tables",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "versionId": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000002",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000010",
+      "name": "When clicking 'Execute workflow'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        220,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT table_schema, table_name\nFROM information_schema.tables\nWHERE table_schema IN ('public', 'broker')\n  AND table_type = 'BASE TABLE'\nORDER BY table_schema, table_name;",
+        "options": {}
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000011",
+      "name": "Postgres",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        520,
+        280
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000100",
+          "name": "Prototype Local Postgres"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When clicking 'Execute workflow'": {
+      "main": [
+        [
+          {
+            "node": "Postgres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

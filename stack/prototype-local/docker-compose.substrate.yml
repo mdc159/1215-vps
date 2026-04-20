@@ -9,7 +9,11 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      BROKER_DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-prototype-postgres}@postgres:5432/postgres
+      BROKER_DATABASE_HOST: postgres
+      BROKER_DATABASE_PORT: 5432
+      BROKER_DATABASE_NAME: postgres
+      BROKER_DATABASE_USER: postgres
+      BROKER_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-prototype-postgres}
       BROKER_SERVICE_NAME: prototype-broker
     ports:
       - "127.0.0.1:8090:8090"
@@ -63,6 +67,37 @@ services:
       interval: 2s
       timeout: 5s
       retries: 10
+
+  minio-init:
+    image: minio/mc
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - >
+        mc alias set local http://minio:9000 minio ${MINIO_ROOT_PASSWORD:-prototype-minio-password}
+        &&
+        mc mb --ignore-existing local/langfuse
+        &&
+        mc mb --ignore-existing local/artifacts
+
+  shared-data-init:
+    image: busybox:1.36
+    restart: "no"
+    command:
+      - sh
+      - -c
+      - >
+        mkdir -p /data/shared/prototype-media
+        &&
+        chmod 0777 /data/shared
+        &&
+        chmod 0777 /data/shared/prototype-media
+    volumes:
+      - prototype_shared_data:/data/shared
 
   qdrant:
     image: qdrant/qdrant
@@ -193,12 +228,35 @@ services:
     volumes:
       - prototype_open_webui_data:/app/backend/data
 
+  comfyui:
+    image: ghcr.io/lecode-official/comfyui-docker:${COMFYUI_IMAGE_TAG:-latest}
+    profiles: ["media"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8188:8188"
+    environment:
+      USER_ID: ${COMFYUI_USER_ID:-1000}
+      GROUP_ID: ${COMFYUI_GROUP_ID:-1000}
+    command: ["--enable-cors-header", "*"]
+    volumes:
+      - prototype_comfyui_models:/opt/comfyui/models
+      - prototype_comfyui_custom_nodes:/opt/comfyui/custom_nodes
+      - prototype_comfyui_output:/opt/comfyui/output
+      - prototype_shared_data:/data/shared
+
   n8n:
-    image: n8nio/n8n:latest
+    build:
+      context: ./n8n
+      args:
+        N8N_BASE_IMAGE: ${N8N_BASE_IMAGE:-n8nio/n8n:latest}
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      shared-data-init:
+        condition: service_completed_successfully
     ports:
       - "127.0.0.1:5678:5678"
     environment:
@@ -211,10 +269,42 @@ services:
       N8N_PERSONALIZATION_ENABLED: "false"
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-prototype-n8n-encryption-key}
       N8N_USER_MANAGEMENT_JWT_SECRET: ${N8N_USER_MANAGEMENT_JWT_SECRET:-prototype-n8n-jwt-secret}
+      NODES_EXCLUDE: "[]"
+      N8N_RESTRICT_FILE_ACCESS_TO: /home/node/.n8n-files,/data/shared
       WEBHOOK_URL: http://127.0.0.1:5678
     volumes:
       - prototype_n8n_data:/home/node/.n8n
       - prototype_shared_data:/data/shared
+
+  n8n-mcp:
+    image: ghcr.io/czlonkowski/n8n-mcp:latest
+    profiles: ["tools"]
+    restart: unless-stopped
+    depends_on:
+      n8n:
+        condition: service_started
+    ports:
+      - "127.0.0.1:13000:3000"
+    environment:
+      MCP_MODE: http
+      AUTH_TOKEN: ${N8N_MCP_AUTH_TOKEN:-prototype-n8n-mcp-auth-token}
+      NODE_ENV: production
+      LOG_LEVEL: ${N8N_MCP_LOG_LEVEL:-info}
+      N8N_MCP_TELEMETRY_DISABLED: ${N8N_MCP_TELEMETRY_DISABLED:-true}
+      PORT: 3000
+      NODE_DB_PATH: /app/data/nodes.db
+      REBUILD_ON_START: ${N8N_MCP_REBUILD_ON_START:-false}
+      WEBHOOK_SECURITY_MODE: moderate
+      N8N_API_URL: http://n8n:5678
+      N8N_API_KEY: ${N8N_API_KEY:-}
+    volumes:
+      - prototype_n8n_mcp_data:/app/data
+    healthcheck:
+      test: ["CMD", "sh", "-c", "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 volumes:
   prototype_postgres_data:
@@ -228,5 +318,9 @@ volumes:
   prototype_clickhouse_data:
   prototype_clickhouse_logs:
   prototype_open_webui_data:
+  prototype_comfyui_models:
+  prototype_comfyui_custom_nodes:
+  prototype_comfyui_output:
   prototype_n8n_data:
+  prototype_n8n_mcp_data:
   prototype_shared_data:
