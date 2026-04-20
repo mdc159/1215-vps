@@ -1,9 +1,12 @@
 """Three-level readiness gate for Supabase."""
 from __future__ import annotations
 
+import subprocess
 import time
 from dataclasses import dataclass
 from typing import Callable, Protocol
+
+import requests
 
 
 class Clock(Protocol):
@@ -51,3 +54,59 @@ def wait_for_supabase(
             if active_clock.now() >= deadline:
                 raise TimeoutError(f"Supabase readiness {name} timed out")
             active_clock.sleep(poll_interval_s)
+
+
+def probe_container_healthy(container_name: str = "supabase-db") -> bool:
+    """Level 1: docker inspect says the container health is healthy."""
+    try:
+        result = subprocess.run(
+            ["docker", "inspect", "-f", "{{.State.Health.Status}}", container_name],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+    return result.returncode == 0 and result.stdout.strip() == "healthy"
+
+
+def probe_accepts_queries(container_name: str = "supabase-db") -> bool:
+    """Level 2: psql inside the container returns `1` for SELECT 1."""
+    try:
+        result = subprocess.run(
+            [
+                "docker",
+                "exec",
+                container_name,
+                "psql",
+                "-U",
+                "postgres",
+                "-d",
+                "postgres",
+                "-tAc",
+                "SELECT 1",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+    return result.returncode == 0 and result.stdout.strip() == "1"
+
+
+def probe_http_ready(kong_url: str = "http://localhost:8000") -> bool:
+    """Level 3: kong can route to the auth service."""
+    try:
+        response = requests.get(f"{kong_url}/auth/v1/health", timeout=5)
+    except requests.RequestException:
+        return False
+    return 200 <= response.status_code < 500
+
+
+def default_checks() -> Checks:
+    return Checks(
+        container_healthy=probe_container_healthy,
+        accepts_queries=probe_accepts_queries,
+        http_ready=probe_http_ready,
+    )
