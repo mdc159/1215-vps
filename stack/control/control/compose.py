@@ -44,7 +44,7 @@ def run(
         capture_output=capture,
         text=True,
         cwd=str(cwd) if cwd else None,
-        env=dict(os.environ if env is None else env),
+        env=dict(os.environ if env is None else {**os.environ, **env}),
     )
     if check and result.returncode != 0:
         stderr = result.stderr if capture else "(see terminal output)"
