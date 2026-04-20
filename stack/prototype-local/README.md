@@ -62,6 +62,9 @@ Repo-owned workflow and function artifacts:
 - n8n manual smoke workflow: [stack/prototype-local/n8n/Get_Prototype_Postgres_Tables.json](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/n8n/Get_Prototype_Postgres_Tables.json)
 - n8n webhook smoke workflow: [stack/prototype-local/n8n/Get_Prototype_Postgres_Tables_Webhook.json](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/n8n/Get_Prototype_Postgres_Tables_Webhook.json)
 - n8n MinIO webhook smoke workflow: [stack/prototype-local/n8n/List_Prototype_Minio_Buckets_Webhook.json](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/n8n/List_Prototype_Minio_Buckets_Webhook.json)
+- n8n ComfyUI smoke workflow: [stack/prototype-local/n8n/Get_Prototype_ComfyUI_System_Stats_Webhook.json](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/n8n/Get_Prototype_ComfyUI_System_Stats_Webhook.json)
+- n8n ComfyUI SD1.5 queue workflow: [stack/prototype-local/n8n/Queue_Prototype_ComfyUI_SD15_Webhook.json](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/n8n/Queue_Prototype_ComfyUI_SD15_Webhook.json)
+- n8n ComfyUI SD1.5 artifact workflow: [stack/prototype-local/n8n/Generate_Prototype_ComfyUI_SD15_Artifact_Webhook.json](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/n8n/Generate_Prototype_ComfyUI_SD15_Artifact_Webhook.json)
 
 The currently validated E2E path is:
 
@@ -175,6 +178,22 @@ the baseline substrate depend on a heavy GPU-oriented service.
 ComfyUI model weights should live on the dedicated ComfyUI models volume, not
 in MinIO as the primary runtime store. MinIO is the durable exchange layer for
 generated artifacts, exports, and optional model distribution or backup.
+
+Current local behavior:
+
+- `prototype-local` boots ComfyUI with `--cpu` by default because this host
+  does not expose an NVIDIA driver into Docker.
+- That is good enough for API smoke tests and workflow wiring, but not for
+  practical image generation throughput.
+- When a GPU-backed host is available, remove the `--cpu` command flag or
+  replace it with the appropriate device/runtime settings before treating
+  ComfyUI as a production-grade generator surface.
+- The first SD1.5 workflow should stay small: queue a minimal prompt graph and
+  return either a `promptId` or ComfyUI's checkpoint validation error. Do not
+  assume a model is installed until `CheckpointLoaderSimple` exposes one.
+- The next SD1.5 workflow can build on that queue path by polling
+  `/history/{prompt_id}`, downloading `/view`, and uploading the finished image
+  into MinIO under `prototype-comfyui/`.
 
 ## Recovery
 

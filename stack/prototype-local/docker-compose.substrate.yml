@@ -237,7 +237,7 @@ services:
     environment:
       USER_ID: ${COMFYUI_USER_ID:-1000}
       GROUP_ID: ${COMFYUI_GROUP_ID:-1000}
-    command: ["--enable-cors-header", "*"]
+    command: ["--cpu", "--enable-cors-header", "*"]
     volumes:
       - prototype_comfyui_models:/opt/comfyui/models
       - prototype_comfyui_custom_nodes:/opt/comfyui/custom_nodes
