@@ -1,11 +1,11 @@
 """
 title: Prototype ComfyUI Pipe
 author: OpenAI Codex
-version: 0.1.0
+version: 0.1.1
 
 Open WebUI pipe for the local prototype ComfyUI SD1.5 artifact workflow. It
 forwards the latest chat message to an n8n webhook and returns the generated
-artifact location as a chat reply.
+artifact location plus an inline image when available.
 """
 
 from __future__ import annotations
@@ -95,6 +95,7 @@ class Pipe:
         if isinstance(payload, dict):
             preferred = payload.get(self.valves.response_field)
             if isinstance(preferred, str) and preferred.strip():
+                image_markdown = payload.get("imageMarkdown")
                 details = []
                 if isinstance(prompt_id := payload.get("promptId"), str) and prompt_id:
                     details.append(f"promptId: {prompt_id}")
@@ -102,9 +103,12 @@ class Pipe:
                     details.append(f"objectKey: {object_key}")
                 if isinstance(checkpoint := payload.get("requestedCheckpoint"), str) and checkpoint:
                     details.append(f"checkpoint: {checkpoint}")
+                sections = [preferred]
+                if isinstance(image_markdown, str) and image_markdown.strip():
+                    sections.append(image_markdown)
                 if details:
-                    return preferred + "\n" + "\n".join(details)
-                return preferred
+                    sections.append("\n".join(details))
+                return "\n\n".join(sections)
 
             return json.dumps(payload, ensure_ascii=True)
 

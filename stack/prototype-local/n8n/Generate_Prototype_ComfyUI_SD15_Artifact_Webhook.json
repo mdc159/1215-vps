@@ -176,6 +176,34 @@
     },
     {
       "parameters": {
+        "executeOnce": true,
+        "command": "={{ \"OUTPUT_PATH=\" + JSON.stringify($json.output_path) + \" node - <<'NODE'\\nconst fs = require('fs');\\nconst outputPath = process.env.OUTPUT_PATH;\\nconst buffer = fs.readFileSync(outputPath);\\nconst dataUrl = 'data:image/png;base64,' + buffer.toString('base64');\\nconsole.log(JSON.stringify({ imageDataUrl: dataUrl, imageMarkdown: '![generated image](' + dataUrl + ')' }));\\nNODE\" }}"
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000625",
+      "name": "Encode Image Data URL",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2560,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const state = $('Parse Download Result').first().json;\nconst stdout = String($input.first().json.stdout || '').trim();\nif (!stdout) {\n  throw new Error('Image encoding command did not return data');\n}\n\nlet metadata;\ntry {\n  metadata = JSON.parse(stdout);\n} catch (error) {\n  throw new Error(`Invalid image encoding metadata: ${stdout}`);\n}\n\nreturn [{\n  json: {\n    ...state,\n    imageDataUrl: metadata.imageDataUrl || null,\n    imageMarkdown: metadata.imageMarkdown || null\n  }\n}];"
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000626",
+      "name": "Parse Image Data URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2820,
+        120
+      ]
+    },
+    {
+      "parameters": {
         "filePath": "={{ $json.output_path }}",
         "dataPropertyName": "data"
       },
@@ -278,6 +306,18 @@
               "name": "downloadedBytes",
               "type": "number",
               "value": "={{ $('Parse Download Result').item.json.downloadedBytes }}"
+            },
+            {
+              "id": "imageDataUrl",
+              "name": "imageDataUrl",
+              "type": "string",
+              "value": "={{ $('Parse Image Data URL').item.json.imageDataUrl }}"
+            },
+            {
+              "id": "imageMarkdown",
+              "name": "imageMarkdown",
+              "type": "string",
+              "value": "={{ $('Parse Image Data URL').item.json.imageMarkdown }}"
             }
           ]
         },
@@ -416,6 +456,28 @@
       ]
     },
     "Parse Download Result": {
+      "main": [
+        [
+          {
+            "node": "Encode Image Data URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encode Image Data URL": {
+      "main": [
+        [
+          {
+            "node": "Parse Image Data URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Image Data URL": {
       "main": [
         [
           {
