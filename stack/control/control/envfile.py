@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from urllib.parse import quote as _quote
 
 _KEY_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
@@ -65,3 +66,11 @@ def render(template_path: Path, values: dict[str, str]) -> str:
             out_lines.append(f"{key}={val}")
 
     return "\n".join(out_lines) + "\n"
+
+
+def compose_honcho_uri(password: str) -> str:
+    """Build the Honcho DB connection URI from the honcho_app password."""
+    if not password:
+        raise ValueError("password required")
+    encoded = _quote(password, safe="")
+    return f"postgresql+psycopg://honcho_app:{encoded}@db:5432/honcho"

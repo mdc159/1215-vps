@@ -93,3 +93,18 @@ def test_render_leaves_template_missing_key_blank(tmp_path: Path):
     rendered = envfile.render(template, {"FOO": "x"})
     assert "FOO=x\n" in rendered
     assert "BAR=\n" in rendered
+
+
+def test_compose_honcho_uri_builds_correct_format():
+    uri = envfile.compose_honcho_uri(password="s3cret")
+    assert uri == "postgresql+psycopg://honcho_app:s3cret@db:5432/honcho"
+
+
+def test_compose_honcho_uri_rejects_empty_password():
+    with pytest.raises(ValueError, match="password required"):
+        envfile.compose_honcho_uri(password="")
+
+
+def test_compose_honcho_uri_url_encodes_special_chars():
+    uri = envfile.compose_honcho_uri(password="p@ss:word")
+    assert uri == "postgresql+psycopg://honcho_app:p%40ss%3Aword@db:5432/honcho"
