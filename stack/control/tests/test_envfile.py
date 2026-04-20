@@ -51,3 +51,45 @@ def test_parse_rejects_malformed_line(tmp_path: Path):
     p.write_text("FOO=bar\nnot-a-valid-line\n")
     with pytest.raises(ValueError, match="line 2"):
         envfile.parse(p)
+
+
+def test_render_preserves_template_comments_and_order(tmp_path: Path):
+    template = tmp_path / ".env.example"
+    template.write_text(
+        "# Supabase\n"
+        "POSTGRES_PASSWORD=\n"
+        "JWT_SECRET=\n"
+        "\n"
+        "# Neo4j\n"
+        "NEO4J_AUTH=\n"
+    )
+    values = {
+        "POSTGRES_PASSWORD": "abc",
+        "JWT_SECRET": "def",
+        "NEO4J_AUTH": "neo4j/pw",
+    }
+    rendered = envfile.render(template, values)
+    assert rendered == (
+        "# Supabase\n"
+        "POSTGRES_PASSWORD=abc\n"
+        "JWT_SECRET=def\n"
+        "\n"
+        "# Neo4j\n"
+        "NEO4J_AUTH=neo4j/pw\n"
+    )
+
+
+def test_render_appends_unknown_keys_at_end(tmp_path: Path):
+    template = tmp_path / ".env.example"
+    template.write_text("FOO=\n")
+    rendered = envfile.render(template, {"FOO": "1", "EXTRA": "2"})
+    assert rendered.endswith("EXTRA=2\n")
+    assert "FOO=1" in rendered
+
+
+def test_render_leaves_template_missing_key_blank(tmp_path: Path):
+    template = tmp_path / ".env.example"
+    template.write_text("FOO=\nBAR=\n")
+    rendered = envfile.render(template, {"FOO": "x"})
+    assert "FOO=x\n" in rendered
+    assert "BAR=\n" in rendered
