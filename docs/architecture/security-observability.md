@@ -6,7 +6,7 @@ This document captures the non-functional constraints that the implementation mu
 
 ### Public
 - `Open WebUI`
-- `n8n`
+- `n8n` only if prototype validation confirms that public operator access is worth the additional risk
 
 Both public apps must be protected by:
 
@@ -14,6 +14,13 @@ Both public apps must be protected by:
 - Cloudflare Access
 - Caddy hostname routing
 - each app's own application auth where applicable
+
+If `n8n` remains public, hardening requirements include:
+
+- no credential-less workflow execution paths
+- Cloudflare Access enforcement
+- rate limiting
+- explicit review of any webhook endpoints that bypass the UI
 
 ### Tailnet-only
 - `Paperclip`
@@ -102,6 +109,26 @@ Every meaningful action should be traceable from:
 3. continuity record
 4. produced artifact or side effect
 
+Workflow-to-trace mapping must be enforced by implementation, not by convention alone. `workflow_id`, `run_id`, and trace correlation identifiers must survive across `n8n`, broker records, Hermes execution, and artifact registration.
+
+## Continuity Plane Governance
+
+The broker and event tables are treated as immutable append-only records.
+
+Required governance rules:
+
+- event writes must be idempotent
+- event payloads must be versioned
+- enrichment and publication writes must carry a source-event hash or equivalent immutable linkage
+- retries must not rewrite historical event meaning
+- lookup tables are preferred over hard Postgres enums where event vocabularies are likely to evolve
+
+Recommended implementation rules:
+
+- use explicit unique constraints for event identity and idempotency keys
+- prefer conflict-safe inserts over update-in-place semantics for event records
+- keep schema migration tooling under version control and require forward and rollback review for broker schema changes
+
 ## Logging and Failure Visibility
 
 At minimum, the system must make these failures legible:
@@ -135,3 +162,10 @@ Recovery rules:
 - continuity records are append-only
 - retries must be idempotent where possible
 - partial failures must not leave silent drift between broker, artifacts, and retrieval stores
+
+Minimum recovery practices:
+
+- nightly logical backup of continuity data to an off-box location
+- off-box replication or export path for MinIO artifacts
+- restore drills against a blank environment
+- verification that restored continuity data preserves event lineage rather than mutating historical identities in place

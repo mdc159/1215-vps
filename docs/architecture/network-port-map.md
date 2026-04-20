@@ -55,10 +55,11 @@ flowchart LR
 
 ### Public
 - `Open WebUI`
-- `n8n`
+- `n8n` only if its public UI/API path remains a deliberate requirement after prototype validation
 
 ### Tailnet-only
 - `Paperclip`
+- `n8n` if the safer deployment shape is chosen
 - `Langfuse`
 - `MinIO console`
 - `Qdrant`
@@ -118,7 +119,7 @@ These are the expected internal ports in the target design.
 | Service | Internal port(s) | Exposure | Status |
 |---|---|---|---|
 | `Open WebUI` | `8080` | Public via Caddy + Cloudflare | Confirmed upstream |
-| `n8n` | `5678` | Public via Caddy + Cloudflare | Confirmed upstream |
+| `n8n` | `5678` | Public via Caddy + Cloudflare or Tailnet-only via Caddy | Confirmed upstream; exposure remains a v1 decision |
 | `Paperclip` | `3100` | Tailnet-only via Caddy | Assumed for v1 from upstream quickstart |
 | `n8n-mcp` | `3000` | Internal-only | Assumed for v1 |
 | `Honcho API` | `8000` | Internal-only | Assumed for v1 and earlier design notes |
@@ -142,10 +143,12 @@ These are the expected internal ports in the target design.
 - Cloudflare Tunnel forwards only approved hostnames
 - Cloudflare Access gates all public app access
 - Caddy routes by hostname to internal services
+- `n8n` should use this route set only if public operator access is worth the increased risk surface
 
 ### Tailnet route set
 - Tailnet operators reach Caddy through Tailscale
 - Caddy routes tailnet-only hostnames to admin and operator surfaces
+- `n8n` may move here after prototype validation if the public UI is not justified
 
 ### Internal route set
 - Docker services resolve each other by service name on internal networks
@@ -154,3 +157,5 @@ These are the expected internal ports in the target design.
 ## Notes for Implementation
 - `Paperclip :3100`, `n8n-mcp :3000`, and `Honcho :8000` should be treated as v1 architectural assumptions until locked by actual compose/build wiring.
 - The implementation should preserve the policy model even if host binds differ temporarily during bootstrap.
+- Prototype review must explicitly decide whether `n8n` remains public or moves to tailnet-only with a narrower webhook/tool ingress path.
+- Add an exposure smoke test that crawls the full port and hostname map and fails if any Internal-only service becomes externally reachable.

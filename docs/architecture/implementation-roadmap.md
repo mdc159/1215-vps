@@ -25,6 +25,7 @@ This roadmap translates the approved architecture into build order. It is intent
 - persistence survives restart
 - public and tailnet hostname routing are correct
 - no private data service is publicly exposed
+- exposure smoke test exists and can fail the build on unexpected external reachability
 
 **Main risks**
 - upstream bundle assumptions leaking into the repo-owned topology
@@ -49,6 +50,7 @@ This roadmap translates the approved architecture into build order. It is intent
 - artifacts are registered durably
 - checkpoints survive restart and partial failure
 - local-node outbox and replay assumptions are documented well enough to prototype
+- schema tests cover idempotency keys, append-only semantics, and payload version expectations
 
 **Main risks**
 - continuity logic being bypassed by direct service-to-service writes
@@ -71,6 +73,7 @@ This roadmap translates the approved architecture into build order. It is intent
 - workflow execution is trace-correlated
 - user interactions produce continuity records
 - approvals and workflow outcomes are auditable
+- `n8n` trace correlation is enforced structurally, not by operator convention
 
 **Main risks**
 - webhook spaghetti instead of stable tool and workflow contracts
@@ -93,6 +96,7 @@ This roadmap translates the approved architecture into build order. It is intent
 - session resume and workspace semantics work
 - execution outputs and artifacts register correctly
 - no direct host execution path bypasses the gateway
+- CI can exercise Paperclip integration against a mock Hermes implementation without requiring the host binary
 
 **Main risks**
 - container-to-host coupling expanding beyond the gateway
@@ -115,6 +119,7 @@ This roadmap translates the approved architecture into build order. It is intent
 - memory events and recalls produce traceable continuity artifacts
 - Qdrant and Neo4j each receive purpose-fit data
 - artifact storage and retrieval are linked in the registry
+- a canonical enrichment path exists before enrichment work is split across multiple workers
 
 **Main risks**
 - duplicate or meaningless mirroring into graph and vector stores
@@ -137,6 +142,7 @@ This roadmap translates the approved architecture into build order. It is intent
 - no unresolved exposure drift exists
 - observability, rollback, and recovery documentation are complete
 - fake-secret canary tests pass across all active subsystems
+- restore drills and backup verification are documented as operational requirements
 
 **Main risks**
 - optional tools creeping back into the stack without purpose

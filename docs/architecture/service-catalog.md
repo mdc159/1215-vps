@@ -18,7 +18,7 @@ Exposure levels:
 | `Tailscale` | Edge | Private operator/admin access | host networking | host state | Tailnet-only path | Required for trusted admin surfaces |
 | `Open WebUI` | Surface | Primary human-facing shell | Caddy, n8n, broker | app data | Public | Main interaction surface for users and operators |
 | `Paperclip` | Surface | Specialist orchestration workbench | Hermes gateway, broker | app data + workspaces | Tailnet-only | Purpose-built company and orchestration surface |
-| `n8n` | Nervous system | Workflow automation, approvals, scheduling | DB, object store, broker | n8n data | Public | Trusted control and policy layer |
+| `n8n` | Nervous system | Workflow automation, approvals, scheduling | DB, object store, broker | n8n data | Public or Tailnet-only | Trusted control and policy layer; final exposure decided after prototype validation |
 | `n8n-mcp` | Nervous system | Structured access to `n8n` docs/capabilities | n8n | app state if needed | Internal-only | Agent-facing control surface for workflow intelligence |
 | `Broker API / workers` | Continuity | Canonical event and continuity plane | Postgres | broker tables | Internal-only | Core system of record |
 | `Postgres / Supabase DB` | Core data | Durable relational store | storage | database volumes | Internal-only | Hosts broker schema and Honcho DB |
@@ -63,6 +63,12 @@ This is retained because it is unusually strong at orchestration, company runtim
 
 ### n8n
 This is promoted, not demoted. It is most valuable when used as a policy-aware workflow nervous system rather than a side utility.
+
+The unresolved question is exposure, not importance:
+
+- safer default: tailnet-only UI and admin surface
+- higher-convenience option: public through Cloudflare Access
+- if public webhooks remain necessary, they should ideally be narrower than exposing the full `n8n` surface
 
 ### Qdrant and Neo4j
 Both stay in v1, but they must not mirror the same information blindly:
