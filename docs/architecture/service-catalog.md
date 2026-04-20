@@ -42,6 +42,9 @@ These services remain part of the candidate rich stack but must justify their op
 | `Flowise` | Surface | Prompt / graph prototyping surface | optional model services | app volume | Tailnet-only | Keep only if it fills a real gap not covered by Open WebUI + n8n + Paperclip |
 | `Ollama` | Model runtime | Local model hosting | compute / GPU if used | model volume | Tailnet-only or Internal-only | Keep if local inference is part of v1 rather than future experimentation |
 | `Supabase Studio` | Admin surface | DB/admin convenience UI | Supabase services | DB state | Tailnet-only | Keep if it materially improves ops without expanding risk |
+| `Learning orchestrator` | Learning plane | Schedules and coordinates offline self-improvement jobs | broker, Langfuse, candidate registry | run history + config | Internal-only | Keep if self-improvement is part of the node pattern rather than a manual side process |
+| `Eval runner` | Learning plane | Replays tasks and runs benchmark suites in a sandbox | learning orchestrator, Hermes mocks or sandbox runtimes | ephemeral + reports | Internal-only | Keep if candidate evaluation is automated and repeatable |
+| `Candidate registry / promotion gate` | Learning plane | Stores candidate variants, scores, approvals, and rollout state | broker, MinIO, Postgres | DB + artifact state | Tailnet-only or Internal-only | Keep if learning outputs are promoted through explicit governance |
 
 ## Deferred Beyond v1
 
@@ -78,3 +81,14 @@ Both stay in v1, but they must not mirror the same information blindly:
 
 ### Langfuse
 This is first-class because the system needs auditable lineage from day one, not just logs after the fact.
+
+### Learning Plane Components
+The self-improvement modules are not modeled as primary apps because their role
+is different:
+
+- they consume traces, broker records, and benchmark data
+- they generate candidate improvements offline
+- they require evaluation and rollback-friendly comparison
+- they should not mutate live behavior directly on the request path
+
+That makes them learning-plane components, not substrate or surface services.

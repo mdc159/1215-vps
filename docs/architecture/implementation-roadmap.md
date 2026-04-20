@@ -148,6 +148,33 @@ This roadmap translates the approved architecture into build order. It is intent
 - optional tools creeping back into the stack without purpose
 - hardening left until too late
 
+## Phase 7: Learning Plane
+
+**Objective**
+- Add a bounded self-improvement loop that learns from traces and continuity
+  records without turning the live system into an uncontrolled self-modifying
+  runtime
+
+**Services touched**
+- learning orchestrator
+- eval runner
+- candidate registry / promotion gate
+- broker API / workers
+- Langfuse
+- optional Hermes sandbox or mock runtime
+
+**Acceptance criteria**
+- candidate skills, prompts, or tool descriptions can be generated offline
+- evaluation runs are reproducible and benchmarked against a baseline
+- candidate artifacts and scores are durably registered
+- promotion decisions are explicit and auditable
+- autonomous experimentation is confined to a sandbox or prototype node
+
+**Main risks**
+- learning loops mutating production behavior too directly
+- low-quality datasets causing deceptive regressions
+- unclear ownership of approval and rollback
+
 ## VPS-Complete Done Bar
 
 The VPS architecture is considered complete when:
@@ -157,5 +184,7 @@ The VPS architecture is considered complete when:
 - Open WebUI and `n8n` are integrated and observable
 - Paperclip and Hermes operate through the intended boundary
 - Honcho, Qdrant, Neo4j, MinIO, and Langfuse are integrated through explicit contracts
+- the learning plane can generate and evaluate candidates without bypassing the
+  promotion gate
 - exposure policy is enforced exactly as designed
 - the system can be operated and debugged through documented runbooks

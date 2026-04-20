@@ -9,6 +9,11 @@ The system has three architectural centers:
 2. The **nervous system** automates, routes, approves, and coordinates work.
 3. The **human and agent surfaces** provide interaction, orchestration, and execution.
 
+The system also has one deliberate adjacent layer:
+
+4. The **learning plane** observes runtime behavior, evaluates improvement
+   candidates offline, and promotes approved changes back into the system.
+
 This is what makes the stack more elegant than "copy and stack":
 
 - the continuity model lives outside any one UI or provider
@@ -70,6 +75,12 @@ flowchart TB
         PROF["Profiles / workspaces"]
     end
 
+    subgraph L["Learning Plane"]
+        LEARN["Learning orchestrator"]
+        EVAL["Eval runner"]
+        CAND["Candidate registry / promotion gate"]
+    end
+
     PUB --> CF --> CADDY
     TAIL --> TS --> CADDY
 
@@ -102,6 +113,12 @@ flowchart TB
     LF --> CH
     LF --> MIN
     LF --> REDIS
+
+    BROKER --> LEARN
+    LF --> LEARN
+    LEARN --> EVAL
+    EVAL --> CAND
+    CAND --> BROKER
 ```
 
 ## Architectural Centers
@@ -138,6 +155,18 @@ The system has two interaction surfaces:
 
 Hermes remains host-native. It is exposed into containers only through a repo-owned gateway and shim.
 
+### 4. Learning Plane
+The learning plane is where self-improvement belongs:
+
+- evaluation dataset generation
+- candidate skill/prompt/tool evolution
+- benchmark replay and comparison
+- candidate storage and lineage
+- promotion and rollback policy
+
+The reference modules `autoreason` and `hermes-agent-self-evolution` belong
+here. They are not first-line runtime services.
+
 ## Service Roles
 
 | Service | Role |
@@ -156,6 +185,7 @@ Hermes remains host-native. It is exposed into containers only through a repo-ow
 | `Langfuse` | First-class tracing and lineage surface |
 | `Hermes gateway` | Narrow container-to-host execution boundary |
 | `Hermes` | Actual agent execution runtime |
+| `Learning orchestrator / eval runner` | Offline improvement loop for skills, prompts, tools, and later selected code |
 
 ## Why This Is Not Just a Stacked Bundle
 Upstream projects remain useful, but they do not define the architecture:
@@ -171,6 +201,7 @@ The repo should therefore own:
 - the workflow and approval model
 - the exposure policy
 - the Hermes boundary
+- the learning and promotion policy
 - the system health and audit rules
 - the inter-node publish and replay model
 

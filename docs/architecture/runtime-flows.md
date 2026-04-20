@@ -197,3 +197,50 @@ sequenceDiagram
 **Failure behavior**
 - memory subsystem failure must degrade gracefully without blocking basic execution
 - private and shared memory boundaries must remain intact even on failure
+
+## 6. Learning and Self-Improvement Loop
+
+```mermaid
+sequenceDiagram
+    participant B as Broker / continuity plane
+    participant LF as Langfuse
+    participant L as Learning orchestrator
+    participant E as Eval runner
+    participant AR as Autoreason / evolution pipeline
+    participant C as Candidate registry
+    participant H as Human reviewer
+
+    B->>L: Publish continuity events and curated failure cases
+    LF->>L: Publish traces and evaluation signals
+    L->>E: Build dataset and schedule replay
+    E->>AR: Run candidate generation and evaluation
+    AR->>C: Register candidate variants and scores
+    C-->>H: Request review / promotion decision
+    alt Approved
+        H-->>C: Approve candidate
+        C->>B: Publish promotion artifact and rollout event
+    else Rejected
+        H-->>C: Reject candidate
+        C->>B: Publish rejection / archive event
+    end
+```
+
+**Trigger**
+- scheduled improvement run, incident-driven replay, or explicit operator request
+
+**Required state writes**
+- dataset build record
+- evaluation run record
+- candidate artifact and score registration
+- promotion or rejection event
+
+**Trace points**
+- learning job start
+- evaluation run start and end
+- candidate generation and judge results
+- promotion decision
+
+**Failure behavior**
+- failed candidate generation must not affect active runtime behavior
+- failed evaluation runs should be resumable or restartable
+- rejected candidates remain auditable but inactive
