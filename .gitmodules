@@ -1,0 +1,24 @@
+[submodule "local-ai-packaged"]
+	path = modules/local-ai-packaged
+	url = https://github.com/coleam00/local-ai-packaged.git
+[submodule "hermes-paperclip-adapter"]
+	path = modules/hermes-paperclip-adapter
+	url = https://github.com/NousResearch/hermes-paperclip-adapter.git
+[submodule "hermes-agent-self-evolution"]
+	path = modules/hermes-agent-self-evolution
+	url = https://github.com/NousResearch/hermes-agent-self-evolution.git
+[submodule "hermes-agent"]
+	path = modules/hermes-agent
+	url = https://github.com/NousResearch/hermes-agent.git
+[submodule "paperclip"]
+	path = modules/paperclip
+	url = https://github.com/paperclipai/paperclip.git
+[submodule "honcho"]
+	path = modules/honcho
+	url = https://github.com/plastic-labs/honcho.git
+[submodule "autoreason"]
+	path = modules/autoreason
+	url = https://github.com/NousResearch/autoreason.git
+[submodule "n8n-mcp"]
+	path = modules/n8n-mcp
+	url = https://github.com/czlonkowski/n8n-mcp.git
