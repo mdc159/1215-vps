@@ -4,6 +4,9 @@
       "name": "prototype-local",
       "summary": "First concrete local-node implementation with no public ingress and the same continuity contracts as the hub.",
       "ingress": "local-only-or-tailnet",
+      "compose_files": [
+        "stack/prototype-local/docker-compose.substrate.yml"
+      ],
       "services": [
         "open-webui",
         "paperclip",
@@ -26,6 +29,7 @@
       "name": "vps-hub",
       "summary": "Shared continuity hub with hardened ingress, workflow nervous system, and inter-node publish/replay endpoints.",
       "ingress": "cloudflare+tunnel+tailnet",
+      "compose_files": [],
       "services": [
         "open-webui",
         "paperclip",
