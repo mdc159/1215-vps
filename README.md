@@ -1,45 +1,62 @@
 # 1215-vps
 
-https://github.com/coleam00/local-ai-packaged.git
-https://github.com/NousResearch/hermes-agent.git
-https://github.com/NousResearch/hermes-paperclip-adapter.git
-https://github.com/NousResearch/hermes-agent-self-evolution.git
-https://github.com/NousResearch/autoreason.git
-https://github.com/paperclipai/paperclip.git
-https://github.com/plastic-labs/honcho.git
-https://github.com/czlonkowski/n8n-mcp.git
-https://github.com/czlonkowski/n8n-mcp.git
+`1215-vps` is being rebuilt as a prototype-first, architecture-driven system.
+The current design is documented in `docs/architecture/` and centers on:
 
-## Bring-up (Phase 1 - foundation)
+- a shared continuity plane as system of record
+- `n8n` as the trusted workflow nervous system
+- Open WebUI as the primary human-facing shell
+- Paperclip as the specialist orchestration surface
+- Hermes as a host-native execution runtime behind a gateway boundary
 
-Phase 1 brings up the data plane: Supabase, Langfuse data services, Qdrant,
-Neo4j, Redis, and MinIO, then initializes the Honcho database and broker
-schema.
+The implementation strategy is:
 
-Prerequisites: Docker Engine with Compose v2, `uv`, and a checkout with
-submodules initialized. The Local AI Package upstream also expects its
-`supabase/docker/` tree to exist before `up` can succeed.
+1. build the **local prototype** as the first concrete local-node implementation
+2. use that prototype to validate the continuity contracts and node pattern
+3. promote the validated architecture into the hardened **VPS hub**
+
+## Architecture Review Pack
+
+Start with these documents:
+
+- `docs/architecture/overview.md`
+- `docs/architecture/service-catalog.md`
+- `docs/architecture/network-port-map.md`
+- `docs/architecture/runtime-flows.md`
+- `docs/architecture/security-observability.md`
+- `docs/architecture/inter-node-data-flow.md`
+- `docs/architecture/implementation-roadmap.md`
+
+## Repo Layout
+
+- `modules/` contains upstream source references and submodules
+- `docs/architecture/` contains the current blueprint and review pack
+- `stack/topology/` contains repo-owned target and service manifests
+- `stack/control/` contains the repo-owned CLI and control-plane tooling
+- `bin/start-1215.py` is the repo-root entrypoint shim
+
+## Current CLI
+
+The new control project is scaffolded first so the repo has a working entrypoint
+before container orchestration is implemented.
 
 ```bash
-# Seed stack/env/.env from the example and generate any missing secrets.
-cp stack/env/.env.example stack/env/.env
-./bin/start-1215.py check
-
-# Bring up the Phase 1 data plane.
-./bin/start-1215.py up --first-boot
+./bin/start-1215.py doctor
+./bin/start-1215.py targets
+./bin/start-1215.py services --target prototype-local
+./bin/start-1215.py docs
 ```
 
-On success, the data plane is healthy, the `honcho` database exists with the
-`vector` and `pg_trgm` extensions, the `broker` schema contains the
-`alignment_log` and `artifact_manifests` tables, and MinIO exposes the
-`langfuse`, `n8n`, and `artifacts` buckets.
+These commands currently validate prerequisites and expose the new manifests.
+They do not bring up services yet.
 
-Phase 1 does not include the self-hosted Honcho services (Plan 2), the Hermes
-gateway and Paperclip orchestrator (Plan 3), `n8n-mcp` and full Langfuse wiring
-(Plan 4), or the edge/public exposure layer (Plan 5).
+## Upstream References
 
-```bash
-cd stack/control
-uv run pytest
-uv run pytest -m integration
-```
+- `modules/local-ai-packaged`
+- `modules/hermes-agent`
+- `modules/hermes-paperclip-adapter`
+- `modules/hermes-agent-self-evolution`
+- `modules/autoreason`
+- `modules/paperclip`
+- `modules/honcho`
+- `modules/n8n-mcp`

@@ -1,48 +1,33 @@
-"""Tests for the CLI surface."""
 from __future__ import annotations
 
-from pathlib import Path
-
-from click.testing import CliRunner
-
-from control import cli
+from control1215 import cli
 
 
-def test_check_exits_zero_when_env_and_example_exist(tmp_path: Path):
-    example = tmp_path / "env" / ".env.example"
-    example.parent.mkdir()
-    example.write_text("SECRET=\nKEEP=static\n")
-
-    runner = CliRunner()
-    result = runner.invoke(
-        cli.main,
-        ["--env-dir", str(tmp_path / "env"), "check"],
-    )
-    assert result.exit_code == 0, result.output
+def test_targets_command_lists_known_targets(capsys) -> None:
+    assert cli.main(["targets"]) == 0
+    out = capsys.readouterr().out
+    assert "prototype-local" in out
+    assert "vps-hub" in out
 
 
-def test_check_exits_nonzero_when_example_missing(tmp_path: Path):
-    runner = CliRunner()
-    result = runner.invoke(
-        cli.main,
-        ["--env-dir", str(tmp_path / "env"), "check"],
-    )
-    assert result.exit_code != 0
-    assert ".env.example" in result.output
+def test_docs_command_lists_architecture_pack(capsys) -> None:
+    assert cli.main(["docs"]) == 0
+    out = capsys.readouterr().out
+    assert "docs/architecture/overview.md" in out
+    assert "docs/architecture/inter-node-data-flow.md" in out
 
 
-def test_check_reports_missing_required_keys(tmp_path: Path):
-    example = tmp_path / "env" / ".env.example"
-    example.parent.mkdir()
-    example.write_text("MY_SECRET=\n")
+def test_services_command_for_prototype_target(capsys) -> None:
+    assert cli.main(["services", "--target", "prototype-local"]) == 0
+    out = capsys.readouterr().out
+    assert "open-webui" in out
+    assert "broker" in out
+    assert "paperclip" in out
 
-    env = tmp_path / "env" / ".env"
-    env.write_text("MY_SECRET=\n")
 
-    runner = CliRunner()
-    result = runner.invoke(
-        cli.main,
-        ["--env-dir", str(tmp_path / "env"), "check", "--no-generate"],
-    )
-    assert result.exit_code != 0
-    assert "POSTGRES_PASSWORD" in result.output
+def test_show_target_command(capsys) -> None:
+    assert cli.main(["show-target", "vps-hub"]) == 0
+    out = capsys.readouterr().out
+    assert '"name": "vps-hub"' in out
+    assert '"ingress": "cloudflare+tunnel+tailnet"' in out
+

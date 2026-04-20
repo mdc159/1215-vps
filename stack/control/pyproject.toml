@@ -1,33 +1,19 @@
 [project]
-name = "vps-control"
+name = "control-1215"
 version = "0.1.0"
-description = "1215-VPS control plane: preflight, readiness gates, phase runners."
+description = "Repo-owned control tooling for the 1215 architecture"
 requires-python = ">=3.12"
-dependencies = [
-    "click>=8.1",
-    "psycopg[binary]>=3.2",
-    "pyyaml>=6.0",
-    "requests>=2.32",
-]
-
-[project.scripts]
-start-1215 = "control.cli:main"
+dependencies = []
 
 [project.optional-dependencies]
-dev = [
-    "pytest>=8.0",
-    "pytest-mock>=3.12",
-]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+start-1215 = "control1215.cli:main"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
 
-[tool.hatch.build.targets.wheel]
-packages = ["control"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-markers = [
-    "integration: requires a running Docker daemon (slow)",
-]
+[tool.setuptools.packages.find]
+include = ["control1215*"]

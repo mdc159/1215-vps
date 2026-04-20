@@ -1,0 +1,48 @@
+{
+  "targets": {
+    "prototype-local": {
+      "name": "prototype-local",
+      "summary": "First concrete local-node implementation with no public ingress and the same continuity contracts as the hub.",
+      "ingress": "local-only-or-tailnet",
+      "services": [
+        "open-webui",
+        "paperclip",
+        "n8n",
+        "n8n-mcp",
+        "broker",
+        "postgres",
+        "valkey",
+        "minio",
+        "qdrant",
+        "neo4j",
+        "honcho",
+        "langfuse",
+        "clickhouse",
+        "hermes-gateway",
+        "hermes"
+      ]
+    },
+    "vps-hub": {
+      "name": "vps-hub",
+      "summary": "Shared continuity hub with hardened ingress, workflow nervous system, and inter-node publish/replay endpoints.",
+      "ingress": "cloudflare+tunnel+tailnet",
+      "services": [
+        "open-webui",
+        "paperclip",
+        "n8n",
+        "n8n-mcp",
+        "broker",
+        "postgres",
+        "valkey",
+        "minio",
+        "qdrant",
+        "neo4j",
+        "honcho",
+        "langfuse",
+        "clickhouse",
+        "hermes-gateway",
+        "hermes"
+      ]
+    }
+  }
+}

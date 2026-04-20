@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Repo-root shim for the 1215-VPS control CLI."""
+"""Repo-root shim for the 1215 control CLI."""
 from __future__ import annotations
 
 import os

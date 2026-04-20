@@ -1,0 +1,94 @@
+{
+  "services": [
+    {
+      "name": "open-webui",
+      "layer": "surface",
+      "role": "primary human-facing shell",
+      "exposure": "public-or-local"
+    },
+    {
+      "name": "paperclip",
+      "layer": "surface",
+      "role": "specialist orchestration workbench",
+      "exposure": "tailnet-or-local"
+    },
+    {
+      "name": "n8n",
+      "layer": "nervous-system",
+      "role": "workflow automation and approvals",
+      "exposure": "public-or-tailnet-or-local"
+    },
+    {
+      "name": "n8n-mcp",
+      "layer": "nervous-system",
+      "role": "structured access to n8n capabilities",
+      "exposure": "internal-only"
+    },
+    {
+      "name": "broker",
+      "layer": "continuity",
+      "role": "canonical event and continuity plane",
+      "exposure": "internal-only"
+    },
+    {
+      "name": "postgres",
+      "layer": "core-data",
+      "role": "durable relational store",
+      "exposure": "internal-only"
+    },
+    {
+      "name": "valkey",
+      "layer": "core-data",
+      "role": "cache and queue support",
+      "exposure": "internal-only"
+    },
+    {
+      "name": "minio",
+      "layer": "retrieval-artifacts",
+      "role": "artifact and object storage",
+      "exposure": "internal-plus-admin"
+    },
+    {
+      "name": "qdrant",
+      "layer": "retrieval",
+      "role": "semantic retrieval plane",
+      "exposure": "tailnet-or-internal"
+    },
+    {
+      "name": "neo4j",
+      "layer": "retrieval",
+      "role": "relationship and fact graph",
+      "exposure": "tailnet-or-internal"
+    },
+    {
+      "name": "honcho",
+      "layer": "memory",
+      "role": "shared-memory provider",
+      "exposure": "internal-only"
+    },
+    {
+      "name": "langfuse",
+      "layer": "observability",
+      "role": "trace and lineage surface",
+      "exposure": "tailnet-or-local"
+    },
+    {
+      "name": "clickhouse",
+      "layer": "core-data",
+      "role": "langfuse analytics store",
+      "exposure": "internal-only"
+    },
+    {
+      "name": "hermes-gateway",
+      "layer": "host-execution",
+      "role": "container-to-host execution boundary",
+      "exposure": "host-only"
+    },
+    {
+      "name": "hermes",
+      "layer": "host-execution",
+      "role": "actual agent runtime",
+      "exposure": "host-only"
+    }
+  ]
+}
