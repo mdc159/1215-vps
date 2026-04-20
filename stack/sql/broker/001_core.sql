@@ -18,8 +18,12 @@ CREATE TABLE IF NOT EXISTS broker.checkpoint_kinds (
 );
 
 INSERT INTO broker.event_types (event_type, description) VALUES
+    ('node.upserted', 'A node registration or metadata update was recorded'),
     ('session.created', 'A new continuity session has been registered'),
     ('run.created', 'A new run has been registered'),
+    ('run.started', 'A run has started execution'),
+    ('run.completed', 'A run completed successfully'),
+    ('run.failed', 'A run failed'),
     ('workflow.started', 'A workflow execution has started'),
     ('workflow.completed', 'A workflow execution completed'),
     ('workflow.failed', 'A workflow execution failed'),

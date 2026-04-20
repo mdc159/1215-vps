@@ -1,6 +1,19 @@
 name: 1215-prototype-local
 
 services:
+  broker:
+    build:
+      context: ../broker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      BROKER_DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-prototype-postgres}@postgres:5432/postgres
+      BROKER_SERVICE_NAME: prototype-broker
+    ports:
+      - "127.0.0.1:8090:8090"
+
   postgres:
     image: postgres:17
     restart: unless-stopped
@@ -172,6 +185,9 @@ services:
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
     restart: unless-stopped
+    depends_on:
+      broker:
+        condition: service_started
     ports:
       - "127.0.0.1:8080:8080"
     volumes:

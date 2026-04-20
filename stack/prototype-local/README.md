@@ -9,6 +9,7 @@ before hardening the VPS hub.
 
 This initial compose focuses on the foundational local services:
 
+- Broker API
 - Postgres
 - Valkey
 - MinIO
@@ -21,7 +22,6 @@ This initial compose focuses on the foundational local services:
 
 It does **not** yet include:
 
-- the broker API/workers
 - Paperclip
 - Hermes gateway
 - Honcho
@@ -36,6 +36,7 @@ docker compose -f stack/prototype-local/docker-compose.substrate.yml up -d
 docker compose -f stack/prototype-local/docker-compose.substrate.yml ps
 ./bin/start-1215.py broker-files
 ./bin/start-1215.py broker-apply --target prototype-local
+curl http://127.0.0.1:8090/healthz
 ```
 
 All ports bind to `127.0.0.1` only in this first slice.

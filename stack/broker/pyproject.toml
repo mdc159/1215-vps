@@ -1,0 +1,24 @@
+[project]
+name = "broker-1215"
+version = "0.1.0"
+description = "Minimal broker API for the 1215 continuity plane."
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115.0",
+  "psycopg[binary]>=3.2.0",
+  "uvicorn>=0.30.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.28.0",
+  "pytest>=8.0",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["broker_service*"]
