@@ -172,6 +172,7 @@ The repo should therefore own:
 - the exposure policy
 - the Hermes boundary
 - the system health and audit rules
+- the inter-node publish and replay model
 
 ## v1 Scope Boundary
 The first complete version is **VPS-complete**, not cross-host-complete.

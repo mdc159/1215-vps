@@ -41,12 +41,14 @@ This roadmap translates the approved architecture into build order. It is intent
 - artifact registry
 - session and run registry
 - provider checkpoint model
+- inter-node publish and replay contracts
 
 **Acceptance criteria**
 - append-only event publication works
 - replay and query paths exist
 - artifacts are registered durably
 - checkpoints survive restart and partial failure
+- local-node outbox and replay assumptions are documented well enough to prototype
 
 **Main risks**
 - continuity logic being bypassed by direct service-to-service writes
