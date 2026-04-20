@@ -59,6 +59,13 @@ def _compose_env(env_dir: Path) -> dict[str, str]:
     return envfile.parse(env)
 
 
+def _compose_files_for_status() -> list[Path]:
+    """Use the Honcho overlay for lifecycle commands once it has been rendered."""
+    if honcho_phase.HONCHO_COMPOSE.exists() and honcho_phase.HONCHO_ENV.exists():
+        return honcho_phase.compose_files()
+    return data_plane.compose_files()
+
+
 @click.group()
 @click.option(
     "--env-dir",
@@ -158,7 +165,7 @@ def down(ctx: click.Context) -> None:
     data_plane.ensure_layout()
     compose.run(
         data_plane.PROJECT,
-        data_plane.compose_files(),
+        _compose_files_for_status(),
         ["down"],
         cwd=data_plane.REPO_ROOT,
         env=_compose_env(env_dir),
@@ -174,7 +181,7 @@ def ps(ctx: click.Context) -> None:
     data_plane.ensure_layout()
     compose.run(
         data_plane.PROJECT,
-        data_plane.compose_files(),
+        _compose_files_for_status(),
         ["ps"],
         cwd=data_plane.REPO_ROOT,
         env=_compose_env(env_dir),
@@ -191,7 +198,7 @@ def logs(ctx: click.Context, services: tuple[str, ...]) -> None:
     data_plane.ensure_layout()
     compose.run(
         data_plane.PROJECT,
-        data_plane.compose_files(),
+        _compose_files_for_status(),
         ["logs", *services],
         cwd=data_plane.REPO_ROOT,
         env=_compose_env(env_dir),
