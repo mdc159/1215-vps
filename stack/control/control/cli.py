@@ -7,7 +7,7 @@ from pathlib import Path
 import click
 
 from control import compose, envfile
-from control.phases import data_plane, preflight
+from control.phases import data_plane, honcho as honcho_phase, preflight
 
 PHASE1_REQUIRED: dict[str, tuple[str, int]] = {
     "POSTGRES_PASSWORD": ("hex", 32),
@@ -121,8 +121,18 @@ def check(ctx: click.Context, no_generate: bool) -> None:
     default="none",
     type=click.Choice(["none", "cpu", "gpu-nvidia", "gpu-amd"]),
 )
+@click.option(
+    "--with-honcho",
+    is_flag=True,
+    help="After Phase 1, bring up self-hosted Honcho (Plan 2).",
+)
 @click.pass_context
-def up(ctx: click.Context, first_boot: bool, ollama_profile: str) -> None:
+def up(
+    ctx: click.Context,
+    first_boot: bool,
+    ollama_profile: str,
+    with_honcho: bool,
+) -> None:
     """Run preflight and bring up Phase 1."""
     env_dir: Path = ctx.obj["env_dir"]
     env_path = _ensure_env(env_dir)
@@ -133,6 +143,10 @@ def up(ctx: click.Context, first_boot: bool, ollama_profile: str) -> None:
         ollama_profile=ollama_profile,
     )
     click.echo("phase 1 complete.")
+    if with_honcho:
+        click.echo("=== Phase 2: honcho ===")
+        rendered = honcho_phase.bring_up(env_path)
+        click.echo(f"phase 2 complete. rendered env: {rendered}")
 
 
 @main.command()

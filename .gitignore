@@ -10,6 +10,7 @@ stack/control/.venv/
 
 # Environment files
 stack/env/.env
+stack/env/rendered/*.env
 
 # Docker
 supabase/               # upstream start_services.py clones here; we don't commit it
