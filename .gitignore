@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+
+# UV
+stack/control/.venv/
+
+# Environment files
+stack/env/.env
+
+# Docker
+supabase/               # upstream start_services.py clones here; we don't commit it
+
+# Editor
+.vscode/
+.idea/
+*.swp
