@@ -34,6 +34,8 @@ Those are added after the substrate is validated.
 ```bash
 docker compose -f stack/prototype-local/docker-compose.substrate.yml up -d
 docker compose -f stack/prototype-local/docker-compose.substrate.yml ps
+./bin/start-1215.py broker-files
+./bin/start-1215.py broker-apply --target prototype-local
 ```
 
 All ports bind to `127.0.0.1` only in this first slice.
@@ -43,3 +45,4 @@ All ports bind to `127.0.0.1` only in this first slice.
 - The compose file uses prototype-safe defaults so it can be rendered without a
   hand-maintained `.env`.
 - Do not reuse these defaults for a shared or public deployment.
+- The first continuity-plane artifact is repo-owned SQL under `stack/sql/broker/`.

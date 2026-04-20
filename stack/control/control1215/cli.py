@@ -4,8 +4,8 @@ import argparse
 import json
 import shutil
 import sys
-from pathlib import Path
 
+from .broker import apply_broker_sql, broker_sql_files, render_broker_sql
 from .topology import list_architecture_docs, load_services, load_targets, resolve_paths
 
 
@@ -16,6 +16,18 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("doctor", help="Check local prerequisites and repo layout.")
     subparsers.add_parser("targets", help="List supported architecture targets.")
     subparsers.add_parser("docs", help="List architecture review documents.")
+    subparsers.add_parser("broker-files", help="List broker SQL migration files.")
+    subparsers.add_parser("broker-ddl", help="Print the current broker SQL bundle.")
+
+    broker_apply = subparsers.add_parser(
+        "broker-apply",
+        help="Apply the broker schema into a target Postgres container.",
+    )
+    broker_apply.add_argument(
+        "--target",
+        default="prototype-local",
+        help="Target name from stack/topology/targets.json",
+    )
 
     services = subparsers.add_parser("services", help="List services for a target.")
     services.add_argument(
@@ -65,6 +77,32 @@ def cmd_docs() -> int:
     return 0
 
 
+def cmd_broker_files() -> int:
+    repo_root = resolve_paths().repo_root
+    for path in broker_sql_files():
+        print(path.relative_to(repo_root))
+    return 0
+
+
+def cmd_broker_ddl() -> int:
+    print(render_broker_sql(), end="")
+    return 0
+
+
+def cmd_broker_apply(target_name: str) -> int:
+    try:
+        result = apply_broker_sql(target_name)
+    except KeyError:
+        print(f"error: unknown target '{target_name}'", file=sys.stderr)
+        return 2
+
+    if result.stdout:
+        print(result.stdout, end="")
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr)
+    return result.returncode
+
+
 def cmd_services(target_name: str) -> int:
     targets = load_targets()["targets"]
     if target_name not in targets:
@@ -102,6 +140,12 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_targets()
     if args.command == "docs":
         return cmd_docs()
+    if args.command == "broker-files":
+        return cmd_broker_files()
+    if args.command == "broker-ddl":
+        return cmd_broker_ddl()
+    if args.command == "broker-apply":
+        return cmd_broker_apply(args.target)
     if args.command == "services":
         return cmd_services(args.target)
     if args.command == "show-target":
@@ -113,4 +157,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -31,3 +31,15 @@ def test_show_target_command(capsys) -> None:
     assert '"name": "vps-hub"' in out
     assert '"ingress": "cloudflare+tunnel+tailnet"' in out
 
+
+def test_broker_files_command(capsys) -> None:
+    assert cli.main(["broker-files"]) == 0
+    out = capsys.readouterr().out
+    assert "stack/sql/broker/001_core.sql" in out
+
+
+def test_broker_ddl_command(capsys) -> None:
+    assert cli.main(["broker-ddl"]) == 0
+    out = capsys.readouterr().out
+    assert "CREATE SCHEMA IF NOT EXISTS broker;" in out
+    assert "CREATE TABLE IF NOT EXISTS broker.events" in out
