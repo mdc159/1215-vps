@@ -1,9 +1,0 @@
-pyproject.toml
-broker_1215.egg-info/PKG-INFO
-broker_1215.egg-info/SOURCES.txt
-broker_1215.egg-info/dependency_links.txt
-broker_1215.egg-info/requires.txt
-broker_1215.egg-info/top_level.txt
-broker_service/__init__.py
-broker_service/app.py
-tests/test_app.py
