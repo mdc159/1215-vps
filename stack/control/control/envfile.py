@@ -33,9 +33,11 @@ def parse(path: Path) -> dict[str, str]:
         key = key.strip()
         if not _KEY_RE.fullmatch(key):
             raise ValueError(f"{path}: line {lineno}: invalid key {key!r}")
-        value = value.strip()
+        value = value.rstrip()
         if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
             value = value[1:-1]
+        else:
+            value = re.split(r"\s+#", value, maxsplit=1)[0].strip()
         out[key] = value
     return out
 

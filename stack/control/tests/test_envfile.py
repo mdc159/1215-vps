@@ -42,6 +42,12 @@ def test_parse_strips_surrounding_single_quotes(tmp_path: Path):
     assert envfile.parse(p) == {"FOO": "bar"}
 
 
+def test_parse_ignores_inline_comments_for_unquoted_values(tmp_path: Path):
+    p = tmp_path / ".env"
+    p.write_text("FOO=   # generated later\nBAR=qux # note\n")
+    assert envfile.parse(p) == {"FOO": "", "BAR": "qux"}
+
+
 def test_parse_missing_file_returns_empty_dict(tmp_path: Path):
     assert envfile.parse(tmp_path / "does-not-exist") == {}
 
