@@ -59,6 +59,7 @@ Current local entry points for the validated prototype path:
 Repo-owned workflow and function artifacts:
 
 - Open WebUI pipe: [stack/prototype-local/open-webui/functions/prototype_n8n_pipe.py](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/open-webui/functions/prototype_n8n_pipe.py)
+- Open WebUI ComfyUI pipe: [stack/prototype-local/open-webui/functions/prototype_comfyui_pipe.py](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/open-webui/functions/prototype_comfyui_pipe.py)
 - n8n manual smoke workflow: [stack/prototype-local/n8n/Get_Prototype_Postgres_Tables.json](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/n8n/Get_Prototype_Postgres_Tables.json)
 - n8n webhook smoke workflow: [stack/prototype-local/n8n/Get_Prototype_Postgres_Tables_Webhook.json](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/n8n/Get_Prototype_Postgres_Tables_Webhook.json)
 - n8n MinIO webhook smoke workflow: [stack/prototype-local/n8n/List_Prototype_Minio_Buckets_Webhook.json](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/n8n/List_Prototype_Minio_Buckets_Webhook.json)
