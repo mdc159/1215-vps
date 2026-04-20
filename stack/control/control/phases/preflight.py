@@ -11,6 +11,7 @@ _COMPOSERS = {
     "honcho_uri": lambda values: envfile.compose_honcho_uri(
         password=values["HONCHO_DB_PASSWORD"]
     ),
+    "neo4j_auth": lambda values: f"neo4j/{secrets.generate_hex(32)}",
 }
 
 
