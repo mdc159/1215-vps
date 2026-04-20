@@ -32,7 +32,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const source = ($json.body && Object.keys($json.body).length ? $json.body : $json.query) || {};\nconst uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;\nconst fileName = `prototype-smoke-${uniqueSuffix}.mp4`;\nconst outputDir = '/data/shared/prototype-media';\nconst outputPath = `${outputDir}/${fileName}`;\nreturn [{ json: { prompt: String(source.prompt || 'prototype media smoke').trim(), file_name: fileName, output_dir: outputDir, output_path: outputPath, bucket_name: 'artifacts', folder_key: 'prototype-media', object_key: `prototype-media/${fileName}` } }];"
+        "jsCode": "const source = ($json.body && Object.keys($json.body).length ? $json.body : $json.query) || {};\nconst uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;\nconst fileName = `prototype-smoke-${uniqueSuffix}.mp4`;\nconst outputDir = '/home/node/.n8n-files/prototype-media';\nconst outputPath = `${outputDir}/${fileName}`;\nreturn [{ json: { prompt: String(source.prompt || 'prototype media smoke').trim(), file_name: fileName, output_dir: outputDir, output_path: outputPath, bucket_name: 'artifacts', folder_key: 'prototype-media', object_key: `prototype-media/${fileName}` } }];"
       },
       "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000312",
       "name": "Prepare Artifact",

@@ -22,3 +22,6 @@
 [submodule "n8n-mcp"]
 	path = modules/n8n-mcp
 	url = https://github.com/czlonkowski/n8n-mcp.git
+[submodule "modules/n8n-skills"]
+	path = modules/n8n-skills
+	url = https://github.com/czlonkowski/n8n-skills.git

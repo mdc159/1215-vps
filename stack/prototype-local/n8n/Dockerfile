@@ -1,6 +1,6 @@
-FROM mwader/static-ffmpeg:7.1.1 AS ffmpeg
-
 ARG N8N_BASE_IMAGE=n8nio/n8n:latest
+
+FROM mwader/static-ffmpeg:7.1.1 AS ffmpeg
 FROM ${N8N_BASE_IMAGE}
 
 USER root

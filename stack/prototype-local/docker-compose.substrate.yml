@@ -270,7 +270,8 @@ services:
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-prototype-n8n-encryption-key}
       N8N_USER_MANAGEMENT_JWT_SECRET: ${N8N_USER_MANAGEMENT_JWT_SECRET:-prototype-n8n-jwt-secret}
       NODES_EXCLUDE: "[]"
-      N8N_RESTRICT_FILE_ACCESS_TO: /home/node/.n8n-files,/data/shared
+      N8N_RESTRICT_FILE_ACCESS_TO: /home/node/.n8n-files;/data/shared
+      N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES: "false"
       WEBHOOK_URL: http://127.0.0.1:5678
     volumes:
       - prototype_n8n_data:/home/node/.n8n

@@ -79,8 +79,10 @@ The currently validated media/storage path is:
 4. `GET /webhook/prototype-minio-buckets` returns the live MinIO bucket list
 5. `shared-data-init` prepares `/data/shared/prototype-media` so containerized
    media workflows can write artifacts before upload
-6. `n8n` widens `N8N_RESTRICT_FILE_ACCESS_TO` to include `/data/shared` so
-   `Read Binary File` can consume locally generated media before S3 upload
+6. `n8n` widens `N8N_RESTRICT_FILE_ACCESS_TO` to include `/data/shared`
+7. `n8n` sets `N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES=false` so `Read Binary File`
+   can consume media generated under `~/.n8n-files/prototype-media` before S3
+   upload
 
 ## Media surfaces
 
@@ -145,6 +147,14 @@ Important behavior:
 
 - Treat MinIO as the durable local artifact boundary for media workflows.
 - Do not rely on container-internal output paths as the only artifact store.
+- For `n8n`-local media generation, use `~/.n8n-files/prototype-media` as the
+  scratch path. `n8n` 2.x blocks reads from its own files directory by default,
+  so the compose stack explicitly disables that internal block for this local
+  prototype.
+- `N8N_RESTRICT_FILE_ACCESS_TO` uses semicolon-separated paths, not commas.
+  The local stack uses `~/.n8n-files;/data/shared`.
+- Reserve `/data/shared` for cross-container handoff with tools like ComfyUI or
+  other media workers that should not depend on `n8n`'s private files area.
 - `n8n` credential IDs are instance-local. Preserve credential names in repo
   artifacts and remap IDs at import time if a workflow references credentials.
 
