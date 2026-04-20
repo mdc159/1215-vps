@@ -189,6 +189,12 @@ Current local behavior:
 - When a GPU-backed host is available, remove the `--cpu` command flag or
   replace it with the appropriate device/runtime settings before treating
   ComfyUI as a production-grade generator surface.
+- The ComfyUI workflows accept `comfyuiBaseUrl` in the webhook payload, so the
+  generator can live on another machine such as an engineering workstation or
+  remote GPU service without rewriting workflow JSON.
+- Open WebUI image replies should use normal MinIO HTTP URLs instead of
+  embedded `data:` payloads. That keeps chat responses small enough for the UI
+  to render while preserving MinIO as the durable artifact store.
 - The first SD1.5 workflow should stay small: queue a minimal prompt graph and
   return either a `promptId` or ComfyUI's checkpoint validation error. Do not
   assume a model is installed until `CheckpointLoaderSimple` exposes one.

@@ -30,7 +30,7 @@
     },
     {
       "parameters": {
-        "url": "http://comfyui:8188/system_stats",
+        "url": "={{ (($json.query && $json.query.comfyuiBaseUrl) || ($json.body && $json.body.comfyuiBaseUrl) || 'http://comfyui:8188') + '/system_stats' }}",
         "options": {}
       },
       "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000412",
@@ -44,7 +44,7 @@
     },
     {
       "parameters": {
-        "url": "http://comfyui:8188/object_info",
+        "url": "={{ (($json.query && $json.query.comfyuiBaseUrl) || ($json.body && $json.body.comfyuiBaseUrl) || 'http://comfyui:8188') + '/object_info' }}",
         "options": {}
       },
       "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000415",

@@ -1,7 +1,7 @@
 """
 title: Prototype ComfyUI Pipe
 author: OpenAI Codex
-version: 0.1.1
+version: 0.1.2
 
 Open WebUI pipe for the local prototype ComfyUI SD1.5 artifact workflow. It
 forwards the latest chat message to an n8n webhook and returns the generated
@@ -23,6 +23,14 @@ class Pipe:
         n8n_url: str = Field(
             default="http://n8n:5678/webhook/prototype-comfyui-sd15-artifact",
             description="Target n8n webhook URL.",
+        )
+        comfyui_base_url: str = Field(
+            default="",
+            description="Optional ComfyUI API base URL override for remote GPU hosts.",
+        )
+        minio_public_base_url: str = Field(
+            default="http://127.0.0.1:9010",
+            description="Public MinIO base URL used for returned preview links.",
         )
         request_method: str = Field(
             default="POST",
@@ -96,6 +104,7 @@ class Pipe:
             preferred = payload.get(self.valves.response_field)
             if isinstance(preferred, str) and preferred.strip():
                 image_markdown = payload.get("imageMarkdown")
+                image_url = payload.get("imageUrl")
                 details = []
                 if isinstance(prompt_id := payload.get("promptId"), str) and prompt_id:
                     details.append(f"promptId: {prompt_id}")
@@ -106,6 +115,8 @@ class Pipe:
                 sections = [preferred]
                 if isinstance(image_markdown, str) and image_markdown.strip():
                     sections.append(image_markdown)
+                elif isinstance(image_url, str) and image_url.strip():
+                    sections.append(f"![generated image]({image_url})")
                 if details:
                     sections.append("\n".join(details))
                 return "\n\n".join(sections)
@@ -151,6 +162,10 @@ class Pipe:
             self.valves.input_field: question,
             "userId": (__user__ or {}).get("id", ""),
         }
+        if self.valves.comfyui_base_url.strip():
+            payload["comfyuiBaseUrl"] = self.valves.comfyui_base_url.strip()
+        if self.valves.minio_public_base_url.strip():
+            payload["minioPublicBaseUrl"] = self.valves.minio_public_base_url.strip()
 
         try:
             method = (self.valves.request_method or "POST").upper()

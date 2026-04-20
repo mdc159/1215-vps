@@ -83,6 +83,8 @@ services:
         mc mb --ignore-existing local/langfuse
         &&
         mc mb --ignore-existing local/artifacts
+        &&
+        mc anonymous set download local/artifacts
 
   shared-data-init:
     image: busybox:1.36

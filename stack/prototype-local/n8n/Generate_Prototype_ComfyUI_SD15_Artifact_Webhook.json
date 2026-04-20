@@ -31,7 +31,7 @@
     },
     {
       "parameters": {
-        "url": "http://comfyui:8188/object_info/CheckpointLoaderSimple",
+        "url": "={{ (($json.query && $json.query.comfyuiBaseUrl) || ($json.body && $json.body.comfyuiBaseUrl) || 'http://comfyui:8188') + '/object_info/CheckpointLoaderSimple' }}",
         "options": {}
       },
       "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000612",
@@ -46,7 +46,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const checkpointNode = $input.first().json?.CheckpointLoaderSimple;\nconst availableCheckpoints = Array.isArray(checkpointNode?.input?.required?.ckpt_name?.[0])\n  ? checkpointNode.input.required.ckpt_name[0]\n  : [];\nconst request = $('Webhook').first().json?.body ?? $('Webhook').first().json ?? {};\nconst promptText = typeof request.prompt === 'string' && request.prompt.trim()\n  ? request.prompt.trim()\n  : 'a studio product photo of a red apple on a table';\nconst negativePrompt = typeof request.negative_prompt === 'string' && request.negative_prompt.trim()\n  ? request.negative_prompt.trim()\n  : 'blurry, low quality, distorted';\nconst requestedCheckpoint = typeof request.checkpoint === 'string' && request.checkpoint.trim()\n  ? request.checkpoint.trim()\n  : (availableCheckpoints.find((name) => /sd.?1\\.5|v1-5/i.test(name)) ?? 'v1-5-pruned-emaonly.safetensors');\nconst seed = Number.isFinite(Number(request.seed)) ? Number(request.seed) : 1;\nconst steps = Number.isFinite(Number(request.steps)) ? Number(request.steps) : 12;\nconst cfg = Number.isFinite(Number(request.cfg)) ? Number(request.cfg) : 7;\nconst width = Number.isFinite(Number(request.width)) ? Number(request.width) : 512;\nconst height = Number.isFinite(Number(request.height)) ? Number(request.height) : 512;\nconst samplerName = typeof request.sampler_name === 'string' && request.sampler_name.trim()\n  ? request.sampler_name.trim()\n  : 'euler';\nconst scheduler = typeof request.scheduler === 'string' && request.scheduler.trim()\n  ? request.scheduler.trim()\n  : 'normal';\nconst clientId = typeof request.client_id === 'string' && request.client_id.trim()\n  ? request.client_id.trim()\n  : 'prototype-local-sd15';\nconst uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;\nconst artifactFileName = `prototype-sd15-${uniqueSuffix}.png`;\nconst outputDir = '/home/node/.n8n-files/prototype-comfyui';\nconst outputPath = `${outputDir}/${artifactFileName}`;\n\nreturn [{\n  json: {\n    requestedCheckpoint,\n    availableCheckpoints,\n    checkpointCount: availableCheckpoints.length,\n    prompt: promptText,\n    negativePrompt,\n    width,\n    height,\n    steps,\n    cfg,\n    samplerName,\n    scheduler,\n    clientId,\n    bucket_name: 'artifacts',\n    folder_key: 'prototype-comfyui',\n    artifact_file_name: artifactFileName,\n    object_key: `prototype-comfyui/${artifactFileName}`,\n    output_dir: outputDir,\n    output_path: outputPath,\n    poll_delay_seconds: Number.isFinite(Number(request.poll_delay_seconds)) ? Number(request.poll_delay_seconds) : 10,\n    max_poll_attempts: Number.isFinite(Number(request.max_poll_attempts)) ? Number(request.max_poll_attempts) : 30,\n    comfyPayload: {\n      client_id: clientId,\n      prompt: {\n        '3': {\n          class_type: 'CheckpointLoaderSimple',\n          inputs: {\n            ckpt_name: requestedCheckpoint\n          }\n        },\n        '4': {\n          class_type: 'CLIPTextEncode',\n          inputs: {\n            text: promptText,\n            clip: ['3', 1]\n          }\n        },\n        '5': {\n          class_type: 'CLIPTextEncode',\n          inputs: {\n            text: negativePrompt,\n            clip: ['3', 1]\n          }\n        },\n        '6': {\n          class_type: 'EmptyLatentImage',\n          inputs: {\n            width,\n            height,\n            batch_size: 1\n          }\n        },\n        '7': {\n          class_type: 'KSampler',\n          inputs: {\n            model: ['3', 0],\n            seed,\n            steps,\n            cfg,\n            sampler_name: samplerName,\n            scheduler,\n            positive: ['4', 0],\n            negative: ['5', 0],\n            latent_image: ['6', 0],\n            denoise: 1\n          }\n        },\n        '8': {\n          class_type: 'VAEDecode',\n          inputs: {\n            samples: ['7', 0],\n            vae: ['3', 2]\n          }\n        },\n        '9': {\n          class_type: 'SaveImage',\n          inputs: {\n            images: ['8', 0],\n            filename_prefix: 'prototype_sd15'\n          }\n        }\n      }\n    }\n  }\n}];"
+        "jsCode": "const checkpointNode = $input.first().json?.CheckpointLoaderSimple;\nconst availableCheckpoints = Array.isArray(checkpointNode?.input?.required?.ckpt_name?.[0])\n  ? checkpointNode.input.required.ckpt_name[0]\n  : [];\nconst request = $('Webhook').first().json?.body ?? $('Webhook').first().json ?? {};\nconst promptText = typeof request.prompt === 'string' && request.prompt.trim()\n  ? request.prompt.trim()\n  : 'a studio product photo of a red apple on a table';\nconst negativePrompt = typeof request.negative_prompt === 'string' && request.negative_prompt.trim()\n  ? request.negative_prompt.trim()\n  : 'blurry, low quality, distorted';\nconst requestedCheckpoint = typeof request.checkpoint === 'string' && request.checkpoint.trim()\n  ? request.checkpoint.trim()\n  : (availableCheckpoints.find((name) => /sd.?1\\.5|v1-5/i.test(name)) ?? 'v1-5-pruned-emaonly.safetensors');\nconst seed = Number.isFinite(Number(request.seed)) ? Number(request.seed) : 1;\nconst steps = Number.isFinite(Number(request.steps)) ? Number(request.steps) : 12;\nconst cfg = Number.isFinite(Number(request.cfg)) ? Number(request.cfg) : 7;\nconst width = Number.isFinite(Number(request.width)) ? Number(request.width) : 512;\nconst height = Number.isFinite(Number(request.height)) ? Number(request.height) : 512;\nconst samplerName = typeof request.sampler_name === 'string' && request.sampler_name.trim()\n  ? request.sampler_name.trim()\n  : 'euler';\nconst scheduler = typeof request.scheduler === 'string' && request.scheduler.trim()\n  ? request.scheduler.trim()\n  : 'normal';\nconst clientId = typeof request.client_id === 'string' && request.client_id.trim()\n  ? request.client_id.trim()\n  : 'prototype-local-sd15';\nconst comfyuiBaseUrl = typeof request.comfyuiBaseUrl === 'string' && request.comfyuiBaseUrl.trim()\n  ? request.comfyuiBaseUrl.trim().replace(/\\/$/, '')\n  : 'http://comfyui:8188';\nconst minioPublicBaseUrl = typeof request.minioPublicBaseUrl === 'string' && request.minioPublicBaseUrl.trim()\n  ? request.minioPublicBaseUrl.trim().replace(/\\/$/, '')\n  : 'http://127.0.0.1:9010';\nconst uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;\nconst artifactFileName = `prototype-sd15-${uniqueSuffix}.png`;\nconst outputDir = '/home/node/.n8n-files/prototype-comfyui';\nconst outputPath = `${outputDir}/${artifactFileName}`;\n\nreturn [{\n  json: {\n    comfyui_base_url: comfyuiBaseUrl,\n    minio_public_base_url: minioPublicBaseUrl,\n    requestedCheckpoint,\n    availableCheckpoints,\n    checkpointCount: availableCheckpoints.length,\n    prompt: promptText,\n    negativePrompt,\n    width,\n    height,\n    steps,\n    cfg,\n    samplerName,\n    scheduler,\n    clientId,\n    bucket_name: 'artifacts',\n    folder_key: 'prototype-comfyui',\n    artifact_file_name: artifactFileName,\n    object_key: `prototype-comfyui/${artifactFileName}`,\n    output_dir: outputDir,\n    output_path: outputPath,\n    poll_delay_seconds: Number.isFinite(Number(request.poll_delay_seconds)) ? Number(request.poll_delay_seconds) : 10,\n    max_poll_attempts: Number.isFinite(Number(request.max_poll_attempts)) ? Number(request.max_poll_attempts) : 30,\n    comfyPayload: {\n      client_id: clientId,\n      prompt: {\n        '3': {\n          class_type: 'CheckpointLoaderSimple',\n          inputs: {\n            ckpt_name: requestedCheckpoint\n          }\n        },\n        '4': {\n          class_type: 'CLIPTextEncode',\n          inputs: {\n            text: promptText,\n            clip: ['3', 1]\n          }\n        },\n        '5': {\n          class_type: 'CLIPTextEncode',\n          inputs: {\n            text: negativePrompt,\n            clip: ['3', 1]\n          }\n        },\n        '6': {\n          class_type: 'EmptyLatentImage',\n          inputs: {\n            width,\n            height,\n            batch_size: 1\n          }\n        },\n        '7': {\n          class_type: 'KSampler',\n          inputs: {\n            model: ['3', 0],\n            seed,\n            steps,\n            cfg,\n            sampler_name: samplerName,\n            scheduler,\n            positive: ['4', 0],\n            negative: ['5', 0],\n            latent_image: ['6', 0],\n            denoise: 1\n          }\n        },\n        '8': {\n          class_type: 'VAEDecode',\n          inputs: {\n            samples: ['7', 0],\n            vae: ['3', 2]\n          }\n        },\n        '9': {\n          class_type: 'SaveImage',\n          inputs: {\n            images: ['8', 0],\n            filename_prefix: 'prototype_sd15'\n          }\n        }\n      }\n    }\n  }\n}];"
       },
       "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000613",
       "name": "Prepare Generation",
@@ -60,7 +60,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://comfyui:8188/prompt",
+        "url": "={{ $json.comfyui_base_url + '/prompt' }}",
         "authentication": "none",
         "sendBody": true,
         "specifyBody": "json",
@@ -87,7 +87,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const request = $('Prepare Generation').first().json;\nconst response = $input.first().json;\nconst body = response.body ?? {};\nconst nodeErrors = body?.node_errors?.['3']?.errors ?? [];\nconst errorDetails = nodeErrors.length > 0 ? nodeErrors : (body?.error?.details ?? null);\n\nreturn [{\n  json: {\n    queued: response.statusCode >= 200 && response.statusCode < 300,\n    queueAttempted: true,\n    statusCode: response.statusCode ?? null,\n    promptId: body?.prompt_id ?? null,\n    queueNumber: body?.number ?? null,\n    requestedCheckpoint: request.requestedCheckpoint,\n    availableCheckpoints: request.availableCheckpoints,\n    checkpointCount: request.checkpointCount,\n    prompt: request.prompt,\n    negativePrompt: request.negativePrompt,\n    width: request.width,\n    height: request.height,\n    steps: request.steps,\n    cfg: request.cfg,\n    samplerName: request.samplerName,\n    scheduler: request.scheduler,\n    clientId: request.clientId,\n    bucket_name: request.bucket_name,\n    folder_key: request.folder_key,\n    artifact_file_name: request.artifact_file_name,\n    object_key: request.object_key,\n    output_dir: request.output_dir,\n    output_path: request.output_path,\n    poll_delay_seconds: request.poll_delay_seconds,\n    max_poll_attempts: request.max_poll_attempts,\n    errorType: response.statusCode >= 200 && response.statusCode < 300 ? null : (body?.error?.type ?? 'queue_error'),\n    errorMessage: response.statusCode >= 200 && response.statusCode < 300 ? null : (body?.error?.message ?? response.statusMessage ?? 'Queue request failed'),\n    errorDetails,\n    rawResponse: body,\n    comfyPayload: request.comfyPayload\n  }\n}];"
+        "jsCode": "const request = $('Prepare Generation').first().json;\nconst response = $input.first().json;\nconst body = response.body ?? {};\nconst nodeErrors = body?.node_errors?.['3']?.errors ?? [];\nconst errorDetails = nodeErrors.length > 0 ? nodeErrors : (body?.error?.details ?? null);\n\nreturn [{\n  json: {\n    queued: response.statusCode >= 200 && response.statusCode < 300,\n    queueAttempted: true,\n    statusCode: response.statusCode ?? null,\n    promptId: body?.prompt_id ?? null,\n    queueNumber: body?.number ?? null,\n    comfyui_base_url: request.comfyui_base_url,\n    minio_public_base_url: request.minio_public_base_url,\n    requestedCheckpoint: request.requestedCheckpoint,\n    availableCheckpoints: request.availableCheckpoints,\n    checkpointCount: request.checkpointCount,\n    prompt: request.prompt,\n    negativePrompt: request.negativePrompt,\n    width: request.width,\n    height: request.height,\n    steps: request.steps,\n    cfg: request.cfg,\n    samplerName: request.samplerName,\n    scheduler: request.scheduler,\n    clientId: request.clientId,\n    bucket_name: request.bucket_name,\n    folder_key: request.folder_key,\n    artifact_file_name: request.artifact_file_name,\n    object_key: request.object_key,\n    output_dir: request.output_dir,\n    output_path: request.output_path,\n    poll_delay_seconds: request.poll_delay_seconds,\n    max_poll_attempts: request.max_poll_attempts,\n    errorType: response.statusCode >= 200 && response.statusCode < 300 ? null : (body?.error?.type ?? 'queue_error'),\n    errorMessage: response.statusCode >= 200 && response.statusCode < 300 ? null : (body?.error?.message ?? response.statusMessage ?? 'Queue request failed'),\n    errorDetails,\n    rawResponse: body,\n    comfyPayload: request.comfyPayload\n  }\n}];"
       },
       "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000615",
       "name": "Format Queue Response",
@@ -135,7 +135,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const state = $input.first().json;\nconst env = [\n  `PROMPT_ID='${state.promptId}'`,\n  `OUTPUT_PATH='${state.output_path}'`,\n  `POLL_DELAY_SECONDS='${state.poll_delay_seconds}'`,\n  `MAX_POLL_ATTEMPTS='${state.max_poll_attempts}'`\n].join(' ');\n\nconst script = `node - <<'NODE'\nconst fs = require('fs');\nconst { setTimeout: sleep } = require('timers/promises');\n\nconst promptId = process.env.PROMPT_ID;\nconst outputPath = process.env.OUTPUT_PATH;\nconst pollDelayMs = Number(process.env.POLL_DELAY_SECONDS || '10') * 1000;\nconst maxAttempts = Number(process.env.MAX_POLL_ATTEMPTS || '30');\n\nasync function main() {\n  fs.mkdirSync(require('path').dirname(outputPath), { recursive: true });\n  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {\n    const historyResponse = await fetch('http://comfyui:8188/history/' + promptId);\n    if (!historyResponse.ok) {\n      throw new Error('Failed to fetch history: ' + historyResponse.status);\n    }\n    const history = await historyResponse.json();\n    const entry = history[promptId];\n    const completed = entry?.status?.completed === true;\n    const image = entry?.outputs?.['9']?.images?.[0] || null;\n\n    if (completed && image) {\n      const viewUrl = new URL('http://comfyui:8188/view');\n      viewUrl.searchParams.set('filename', image.filename);\n      viewUrl.searchParams.set('subfolder', image.subfolder || '');\n      viewUrl.searchParams.set('type', image.type || 'output');\n      const fileResponse = await fetch(viewUrl);\n      if (!fileResponse.ok) {\n        throw new Error('Failed to download image: ' + fileResponse.status);\n      }\n      const buffer = Buffer.from(await fileResponse.arrayBuffer());\n      fs.writeFileSync(outputPath, buffer);\n      console.log(JSON.stringify({\n        promptId,\n        pollAttempt: attempt,\n        filename: image.filename,\n        subfolder: image.subfolder || '',\n        type: image.type || 'output',\n        outputPath,\n        bytes: buffer.length\n      }));\n      return;\n    }\n\n    if (completed && !image) {\n      throw new Error('Prompt completed without image output');\n    }\n\n    await sleep(pollDelayMs);\n  }\n\n  throw new Error('Timed out waiting for ComfyUI prompt ' + promptId);\n}\n\nmain().catch((error) => {\n  console.error(JSON.stringify({ promptId, error: error.message }));\n  process.exit(1);\n});\nNODE`;\n\nreturn [{ json: { ...state, poll_command: `${env} ${script}` } }];"
+        "jsCode": "const state = $input.first().json;\nconst env = [\n  `COMFYUI_BASE_URL=${JSON.stringify(state.comfyui_base_url || 'http://comfyui:8188')}`,\n  `PROMPT_ID=${JSON.stringify(state.promptId)}`,\n  `OUTPUT_PATH=${JSON.stringify(state.output_path)}`,\n  `POLL_DELAY_SECONDS=${JSON.stringify(String(state.poll_delay_seconds))}`,\n  `MAX_POLL_ATTEMPTS=${JSON.stringify(String(state.max_poll_attempts))}`\n].join(' ');\n\nconst script = `node - <<'NODE'\nconst fs = require('fs');\nconst { setTimeout: sleep } = require('timers/promises');\n\nconst baseUrl = process.env.COMFYUI_BASE_URL || 'http://comfyui:8188';\nconst promptId = process.env.PROMPT_ID;\nconst outputPath = process.env.OUTPUT_PATH;\nconst pollDelayMs = Number(process.env.POLL_DELAY_SECONDS || '10') * 1000;\nconst maxAttempts = Number(process.env.MAX_POLL_ATTEMPTS || '30');\n\nasync function main() {\n  fs.mkdirSync(require('path').dirname(outputPath), { recursive: true });\n  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {\n    const historyResponse = await fetch(baseUrl + '/history/' + promptId);\n    if (!historyResponse.ok) {\n      throw new Error('Failed to fetch history: ' + historyResponse.status);\n    }\n    const history = await historyResponse.json();\n    const entry = history[promptId];\n    const completed = entry?.status?.completed === true;\n    const image = entry?.outputs?.['9']?.images?.[0] || null;\n\n    if (completed && image) {\n      const viewUrl = new URL(baseUrl + '/view');\n      viewUrl.searchParams.set('filename', image.filename);\n      viewUrl.searchParams.set('subfolder', image.subfolder || '');\n      viewUrl.searchParams.set('type', image.type || 'output');\n      const fileResponse = await fetch(viewUrl);\n      if (!fileResponse.ok) {\n        throw new Error('Failed to download image: ' + fileResponse.status);\n      }\n      const buffer = Buffer.from(await fileResponse.arrayBuffer());\n      fs.writeFileSync(outputPath, buffer);\n      console.log(JSON.stringify({\n        promptId,\n        pollAttempt: attempt,\n        filename: image.filename,\n        subfolder: image.subfolder || '',\n        type: image.type || 'output',\n        outputPath,\n        bytes: buffer.length\n      }));\n      return;\n    }\n\n    if (completed && !image) {\n      throw new Error('Prompt completed without image output');\n    }\n\n    await sleep(pollDelayMs);\n  }\n\n  throw new Error('Timed out waiting for ComfyUI prompt ' + promptId);\n}\n\nmain().catch((error) => {\n  console.error(JSON.stringify({ promptId, error: error.message }));\n  process.exit(1);\n});\nNODE`;\n\nreturn [{ json: { ...state, poll_command: `${env} ${script}` } }];"
       },
       "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000617",
       "name": "Prepare Poll Command",
@@ -172,34 +172,6 @@
       "position": [
         2300,
         220
-      ]
-    },
-    {
-      "parameters": {
-        "executeOnce": true,
-        "command": "={{ \"OUTPUT_PATH=\" + JSON.stringify($json.output_path) + \" node - <<'NODE'\\nconst fs = require('fs');\\nconst outputPath = process.env.OUTPUT_PATH;\\nconst buffer = fs.readFileSync(outputPath);\\nconst dataUrl = 'data:image/png;base64,' + buffer.toString('base64');\\nconsole.log(JSON.stringify({ imageDataUrl: dataUrl, imageMarkdown: '![generated image](' + dataUrl + ')' }));\\nNODE\" }}"
-      },
-      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000625",
-      "name": "Encode Image Data URL",
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
-      "position": [
-        2560,
-        120
-      ]
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "const state = $('Parse Download Result').first().json;\nconst stdout = String($input.first().json.stdout || '').trim();\nif (!stdout) {\n  throw new Error('Image encoding command did not return data');\n}\n\nlet metadata;\ntry {\n  metadata = JSON.parse(stdout);\n} catch (error) {\n  throw new Error(`Invalid image encoding metadata: ${stdout}`);\n}\n\nreturn [{\n  json: {\n    ...state,\n    imageDataUrl: metadata.imageDataUrl || null,\n    imageMarkdown: metadata.imageMarkdown || null\n  }\n}];"
-      },
-      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000626",
-      "name": "Parse Image Data URL",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2820,
-        120
       ]
     },
     {
@@ -252,6 +224,12 @@
               "name": "output",
               "type": "string",
               "value": "={{ `Generated prototype ComfyUI SD1.5 artifact: s3://${$('Parse Download Result').item.json.bucket_name}/${$('Parse Download Result').item.json.object_key}` }}"
+            },
+            {
+              "id": "imageUrl",
+              "name": "imageUrl",
+              "type": "string",
+              "value": "={{ $('Parse Download Result').item.json.minio_public_base_url + '/' + $('Parse Download Result').item.json.bucket_name + '/' + $('Parse Download Result').item.json.object_key }}"
             },
             {
               "id": "bucket",
@@ -308,16 +286,10 @@
               "value": "={{ $('Parse Download Result').item.json.downloadedBytes }}"
             },
             {
-              "id": "imageDataUrl",
-              "name": "imageDataUrl",
-              "type": "string",
-              "value": "={{ $('Parse Image Data URL').item.json.imageDataUrl }}"
-            },
-            {
               "id": "imageMarkdown",
               "name": "imageMarkdown",
               "type": "string",
-              "value": "={{ $('Parse Image Data URL').item.json.imageMarkdown }}"
+              "value": "={{ '![generated image](' + $('Parse Download Result').item.json.minio_public_base_url + '/' + $('Parse Download Result').item.json.bucket_name + '/' + $('Parse Download Result').item.json.object_key + ')' }}"
             }
           ]
         },
@@ -456,28 +428,6 @@
       ]
     },
     "Parse Download Result": {
-      "main": [
-        [
-          {
-            "node": "Encode Image Data URL",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Encode Image Data URL": {
-      "main": [
-        [
-          {
-            "node": "Parse Image Data URL",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Parse Image Data URL": {
       "main": [
         [
           {
