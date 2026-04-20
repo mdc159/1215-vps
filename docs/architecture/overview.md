@@ -224,3 +224,7 @@ Deferred beyond v1:
 
 - live Engineering-host and Research-host integrations
 - remote provider sync beyond explicit adapter contracts
+
+For node-specific responsibilities and promotion policy across VPS, prototype,
+engineering, and research nodes, see
+[node-roles.md](/mnt/data/Documents/repos/1215-vps/docs/architecture/node-roles.md).
