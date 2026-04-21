@@ -243,7 +243,8 @@ services:
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-prototype-nextauth-secret}
 
   open-webui:
-    image: ${OPEN_WEBUI_IMAGE:-ghcr.io/open-webui/open-webui@sha256:000b87a6ae726aa7f6611a0064ba528ba1a6aff6ead5fb3b6c89fd4a5717eb8a}
+    # v0.9.0 (2026-04-21)
+    image: ${OPEN_WEBUI_IMAGE:-ghcr.io/open-webui/open-webui@sha256:eb874c0530209dd5ca21a4d0a7cc42e69f2ee85f0e7b90ae94659cd415c27c6d}
     restart: unless-stopped
     depends_on:
       broker:
