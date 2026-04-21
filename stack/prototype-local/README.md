@@ -44,6 +44,17 @@ The thin wrappers `stack/prototype-local/scripts/launch.sh` and
 points for fresh clones; both delegate to `./bin/1215 up` / `./bin/1215
 down`.
 
+### Tier-0 seed (`hermes-zero`)
+
+`./bin/1215 seed-hermes` installs a minimum-viable Hermes profile at
+`/var/lib/hermes/hermes-zero/` with five stdlib-only skills
+(`read-file`, `write-file`, `append-file`, `run-shell`, `git-commit`).
+The seed is structurally isolated from `orchestrator-ceo` and has no
+substrate dependencies, so it can run before the compose stack is even
+up. See
+[`docs/architecture/hermes-zero-seed.md`](../../docs/architecture/hermes-zero-seed.md)
+for the design rationale, pilot runbook, and tier-1 guardrails.
+
 Today the example node manifests all resolve through the `prototype-local`
 target because this is still the first full runnable substrate. The important
 part is that node selection now happens through repo-owned manifests and

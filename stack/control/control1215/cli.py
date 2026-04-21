@@ -121,6 +121,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="Skip gate_shared_core.py (still runs exposure + canary).",
     )
 
+    seed_hermes = subparsers.add_parser(
+        "seed-hermes",
+        help="Install the tier-0 hermes-zero profile (5 stdlib seed skills).",
+    )
+    seed_hermes.add_argument(
+        "--force",
+        action="store_true",
+        help="Regenerate config.yaml / .env / skill tree even if present.",
+    )
+    seed_hermes.add_argument(
+        "--enable-langfuse",
+        action="store_true",
+        help="Propagate LANGFUSE_* vars into hermes-zero's .env (off by default).",
+    )
+
     return parser
 
 
@@ -305,6 +320,33 @@ def cmd_compose(node_name: str, compose_args: list[str]) -> int:
     return result.returncode
 
 
+def cmd_seed_hermes(*, force: bool, enable_langfuse: bool) -> int:
+    """Invoke the hermes-zero seed installer shell script.
+
+    The installer lives next to the gateway's other profile setup
+    scripts. Exposing it here means operators only have one entry
+    point (`./bin/1215 seed-hermes`) to remember.
+    """
+    paths = resolve_paths()
+    script = (
+        paths.stack_root
+        / "services"
+        / "hermes-gateway"
+        / "scripts"
+        / "seed_hermes_zero.sh"
+    )
+    if not script.exists():
+        print(f"error: missing {script}", file=sys.stderr)
+        return 2
+    cmd: list[str] = [str(script)]
+    if force:
+        cmd.append("--force")
+    if enable_langfuse:
+        cmd.append("--enable-langfuse")
+    result = subprocess.run(cmd)
+    return result.returncode
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -343,6 +385,8 @@ def main(argv: list[str] | None = None) -> int:
         return lifecycle.do_logs(args.service, follow=args.follow, target=args.target)
     if args.command == "smoke":
         return lifecycle.do_smoke(as_json=args.as_json, skip_gate=args.skip_gate)
+    if args.command == "seed-hermes":
+        return cmd_seed_hermes(force=args.force, enable_langfuse=args.enable_langfuse)
 
     parser.error(f"unknown command: {args.command}")
     return 2
