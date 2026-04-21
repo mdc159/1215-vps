@@ -19,8 +19,8 @@ services:
       - "127.0.0.1:8090:8090"
 
   postgres:
-    # postgres:17
-    image: postgres@sha256:7ad98329d513dd497293b951c195ca354274a77f12ddbbbbf85e68a811823d72
+    # pgvector/pgvector:pg17 (drop-in Postgres 17 + pgvector; swapped in Phase B to support host-native Honcho)
+    image: pgvector/pgvector@sha256:494dff7e67e7bc2c826b94c331364978d145ebb86fd338154138b084223b7f67
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
@@ -37,8 +37,8 @@ services:
       retries: 10
 
   postgres-bootstrap:
-    # postgres:17
-    image: postgres@sha256:7ad98329d513dd497293b951c195ca354274a77f12ddbbbbf85e68a811823d72
+    # pgvector/pgvector:pg17 (matches the substrate postgres image so psql/createdb versions line up)
+    image: pgvector/pgvector@sha256:494dff7e67e7bc2c826b94c331364978d145ebb86fd338154138b084223b7f67
     restart: "no"
     depends_on:
       postgres:
@@ -46,6 +46,7 @@ services:
     environment:
       PGPASSWORD: ${POSTGRES_PASSWORD:-prototype-postgres}
       LANGFUSE_DATABASE_NAME: ${LANGFUSE_DATABASE_NAME:-langfuse}
+      HONCHO_DATABASE_NAME: ${HONCHO_DATABASE_NAME:-honcho}
     entrypoint: /bin/sh
     command:
       - -ec
@@ -55,6 +56,12 @@ services:
         if ! psql -h postgres -U postgres -d postgres -Atqc "select 1 from pg_database where datname = '$${LANGFUSE_DATABASE_NAME}'" | grep -q 1; then
           createdb -h postgres -U postgres "$${LANGFUSE_DATABASE_NAME}";
         fi
+        &&
+        if ! psql -h postgres -U postgres -d postgres -Atqc "select 1 from pg_database where datname = '$${HONCHO_DATABASE_NAME}'" | grep -q 1; then
+          createdb -h postgres -U postgres "$${HONCHO_DATABASE_NAME}";
+        fi
+        &&
+        psql -h postgres -U postgres -d "$${HONCHO_DATABASE_NAME}" -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
   valkey:
     # docker.io/valkey/valkey:8-alpine

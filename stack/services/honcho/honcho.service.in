@@ -1,0 +1,22 @@
+[Unit]
+Description=1215-vps Honcho API (host-native)
+Documentation=https://github.com/plastic-labs/honcho
+# No hard ordering against the substrate Postgres container: it is managed by
+# Docker / the 1215 launcher, not systemd. The service retries on failure
+# until Postgres is reachable at 127.0.0.1:5433.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=@HONCHO_DIR@
+EnvironmentFile=@ENV_FILE@
+ExecStart=@UV_BIN@ run fastapi run src/main.py --host 127.0.0.1 --port 18000
+Restart=on-failure
+RestartSec=3
+# Honcho boot includes alembic migrations the first time the DB is empty,
+# which can take ~30s.
+TimeoutStartSec=180
+
+[Install]
+WantedBy=default.target

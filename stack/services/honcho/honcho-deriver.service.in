@@ -1,0 +1,20 @@
+[Unit]
+Description=1215-vps Honcho deriver worker (host-native)
+Documentation=https://github.com/plastic-labs/honcho
+After=honcho.service network-online.target
+Wants=network-online.target
+# Deriver uses the same DB and LLM wiring as the API; if the API unit is
+# stopped (e.g. during a planned upgrade) the deriver is stopped too.
+PartOf=honcho.service
+
+[Service]
+Type=simple
+WorkingDirectory=@HONCHO_DIR@
+EnvironmentFile=@ENV_FILE@
+ExecStart=@UV_BIN@ run python -m src.deriver
+Restart=on-failure
+RestartSec=3
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target
