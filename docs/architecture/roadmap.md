@@ -5,8 +5,45 @@ Ordered phases from [current-state.md](current-state.md) to
 deliverables, an acceptance check, and a rough effort estimate. Phases run
 in order — each assumes the previous ones are complete.
 
-Phases A–G define the path to prototype-complete (v1). Deferred items are
-listed at the end and are not scheduled here.
+Phase 0 is branch hygiene; Phases A–G define the path to prototype-complete
+(v1); Phase H is the operator-facing bringup seam. Deferred items are listed
+at the end and are not scheduled here.
+
+## Phase 0 — Stabilize the `proto` Branch (DONE)
+
+Landed in two commits on `proto`:
+
+1. `proto: strip to essentials (formalize trim)` — removed legacy
+   architecture docs superseded by the review pack
+   (`deployment-model`, `service-catalog`, `network-port-map`,
+   `runtime-flows`, `security-observability`, `inter-node-data-flow`,
+   `implementation-roadmap`, `learning-plane`, `node-rollout-plan`,
+   `prototype-local-shared-core-plan`, `review-01`, `module-env-compilation`,
+   `audit/`, `Self-Hosted Long-Horizon Memory Architecture...md`), plus
+   `docs/adr/`, `docs/reference/`, `docs/superpowers/`, placeholder
+   `nodes/{vps,engineering-pc,local-builder}/` manifests, `.claude/`
+   tooling, `CLAUDE.md`, and `bin/start-1215.py`. Phase H rebuilds the
+   repo-root shim as `bin/1215`.
+2. `proto: phase 0 — stabilize branch (align plan docs with trimmed tree)`
+   — rewrote the top-level `README.md` review pack, patched
+   `current-state.md` to match the trimmed tree (removed Audit Artifacts
+   section, corrected role overlay listing, redirected the
+   service-catalog reference to north-star), marked this phase DONE, and
+   committed `execution-plan.md` as the executable companion to this
+   roadmap.
+
+Kept: `stack/`, `modules/`, and six authoritative architecture documents
+— `north-star.md`, `current-state.md`, `roadmap.md`, `execution-plan.md`,
+`node-roles.md`, and `overview.md` (legacy reference, deprecation banner
+retained).
+
+Acceptance (verified at the Phase 0 commit): `git status --short` shows
+no unintended `D` or `??` entries on `proto`; the top-level `README.md`
+references only present documents; `current-state.md` accurately
+describes the trimmed tree.
+
+A fresh agent session starts at **Phase A** below and uses
+`docs/architecture/execution-plan.md` as the concrete per-phase runbook.
 
 ## Phase A — Tidy Foundations (~1 day)
 
@@ -21,17 +58,14 @@ Deliverables:
   with the Open WebUI and ComfyUI pattern already in the file.
 - Delete the empty `services: {}` overlay at
   [stack/roles/builder/docker-compose.role.yml](../../stack/roles/builder/docker-compose.role.yml)
-  (or populate with a real builder service). Either leave `stack/roles/core/`
-  and `stack/roles/vps/` empty with an explicit `.gitkeep + README` noting
-  "intentionally empty, shared core lives in compose", or populate them.
-- Fix the broken absolute link in
-  [overview.md](overview.md) line 233 (`/mnt/data/...` → relative).
+  (or populate with a real builder service).
 - Create a minimal `nodes/linux-prototype/` manifest (`README.md` +
   `roles.env.example` with `core,media-cpu,tools`) so this machine has a
   canonical name in the topology.
 
 Acceptance check: `docker compose -f stack/prototype-local/docker-compose.substrate.yml config`
-resolves to fully-pinned images; `rg '/mnt/data' docs/` returns no results.
+resolves to fully-pinned images; `nodes/linux-prototype/README.md` and
+`nodes/linux-prototype/roles.env.example` both exist.
 
 Candidate for collapse: none — keep as a quick warmup phase.
 
@@ -185,8 +219,10 @@ Deliverables:
 - Add `POST /checkpoints` and `GET /checkpoints` endpoints to
   [stack/broker/broker_service/app.py](../../stack/broker/broker_service/app.py)
   to support `broadcast_ack`.
-- Skill signatures match the specs in
-  [Self-Hosted Long-Horizon Memory Architecture...md](Self-Hosted%20Long-Horizon%20Memory%20Architecture%20for%20Three%20Hermes-Backed.md).
+- Skill signatures follow the broadcast/artifact API contract implied by
+  the broker schema in
+  [stack/sql/broker/001_core.sql](../../stack/sql/broker/001_core.sql)
+  (events, artifacts, provider_checkpoints tables).
 
 Acceptance check: Hermes running as the CEO can:
 
@@ -223,6 +259,81 @@ all spans nested under the one trace.
 Candidate for collapse: can be a final polish pass; small enough to stay
 as its own phase.
 
+## Phase H — Unified Launch Script (~1 day)
+
+Collapse the existing patchwork (`docker compose` invocations,
+`stack/prototype-local/scripts/setup_hermes_honcho_paperclip.py`,
+ad-hoc `systemctl --user` commands, manual `.env` bootstrapping) into a
+single operator entrypoint. This phase is last because it depends on the
+artifacts produced in B (Honcho unit), D (gateway unit), and E (Paperclip
+compose service) existing.
+
+Deliverables:
+
+- Extend the existing control CLI
+  ([stack/control/control1215/cli.py](../../stack/control/control1215/cli.py))
+  with five new subcommands. Keep the existing `doctor`, `targets`,
+  `services`, `docs` subcommands intact.
+  - `up [--target prototype-local]` — idempotent bringup in dependency
+    order:
+    1. Run `init_env` if `stack/prototype-local/.env` is missing
+       (reuses [scripts/init_env.py](../../stack/prototype-local/scripts/init_env.py)).
+    2. `docker compose -f stack/prototype-local/docker-compose.substrate.yml up -d`.
+    3. Poll Postgres / Valkey / MinIO / ClickHouse `healthz` (timeout
+       90s each) before moving on.
+    4. `systemctl --user start honcho honcho-deriver` (Phase B artifact).
+    5. `systemctl --user start hermes-gateway` (Phase D artifact).
+    6. `docker compose up -d paperclip` (Phase E artifact).
+    7. Run `gate_shared_core.py` + exposure smoke test + fake-secret
+       canary. Fail the command on any gate failure.
+  - `down` — reverse order. Stop compose stack, stop user units. Never
+    removes volumes; `--volumes` flag required for destructive stop.
+  - `status` — single-table view: every service with `state`, `port`,
+    and a short `hint` (last-error snippet or "—"). Wraps
+    `docker compose ps --format json`, `systemctl --user show`, and
+    per-service `/healthz` calls.
+  - `logs <service> [--follow]` — routes to `docker compose logs` or
+    `journalctl --user -u <service>` based on service type. A
+    `service -> source` map lives in
+    `stack/control/control1215/lifecycle.py`.
+  - `smoke` — runs `gate_shared_core.py`, the exposure smoke test, and
+    the fake-secret canary in isolation (no bringup/teardown side
+    effects). Exits non-zero on any failure.
+- Rename the root shim from `bin/start-1215.py` to `bin/1215` (same
+  pattern; `+x`; execvp into `uv run --project stack/control start-1215`).
+  Keep a one-line `bin/start-1215.py` symlink or tombstone for one phase
+  to avoid breaking muscle memory, then remove in the next commit.
+- Retire
+  [stack/prototype-local/scripts/setup_hermes_honcho_paperclip.py](../../stack/prototype-local/scripts/setup_hermes_honcho_paperclip.py).
+  Its substrate bringup is covered by compose, its Honcho bringup by Phase
+  B's systemd unit, its Paperclip bringup by Phase E's compose service.
+  Delete the file once `1215 up` has replaced it end-to-end (not earlier —
+  it's the only working bringup until all of B/C/D/E land).
+- Every subcommand is idempotent: `1215 up` twice is a no-op on the
+  second run; `1215 down` on a clean system exits 0 with "nothing to
+  stop".
+- Every subcommand prints a machine-readable summary on `--json` for CI
+  use.
+
+Acceptance check:
+
+1. `./bin/1215 up` on a cold machine reaches "all green" in
+   `./bin/1215 status` in under 3 minutes.
+2. `./bin/1215 smoke` passes immediately after `1215 up` completes.
+3. `./bin/1215 down && ./bin/1215 up` returns to a byte-identical
+   `status` output (modulo timestamps).
+4. `./bin/1215 status` on a half-up system (e.g. compose up, user units
+   stopped) shows exactly which services are missing without crashing
+   and with non-zero exit code.
+5. `docker compose -f stack/prototype-local/docker-compose.substrate.yml ps`
+   and `systemctl --user list-units --state=active` agree with
+   `./bin/1215 status` — no drift.
+
+Candidate for collapse: none — this is the operator-facing seam and
+earns its own phase. The actual implementation is small because it
+wraps existing pieces; the discipline is in idempotency and the
+status/logs routing table.
+
 ## Cross-Phase Gates
 
 Two tests should run after every phase from C onward and should be added to
@@ -256,8 +367,11 @@ forgotten.
 
 ## Rough Total
 
+- Phase 0: ~½ day (branch hygiene).
 - Phases A–G: ~12–17 working days end-to-end, assuming focused work and no
   major snag on Phase D (the gateway). Phase D is the single biggest risk;
   the others are well-shaped.
-- The prototype is **prototype-complete** when all of A–G pass their
-  acceptance checks.
+- Phase H: ~1 day (wraps existing pieces; discipline cost, not code cost).
+- **Total: ~14–19 working days** for `proto` → prototype-complete.
+- The prototype is **prototype-complete** when all of A–H pass their
+  acceptance checks, with every cross-phase gate green.

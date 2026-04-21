@@ -1,56 +1,93 @@
 # 1215-vps
 
 `1215-vps` is being rebuilt as a prototype-first, architecture-driven system.
-The current design is documented in `docs/architecture/` and centers on:
+It is an autonomous, multi-surface business stack grown from a single local
+prototype into a hardened VPS hub and, eventually, a multi-node topology.
 
-- a shared continuity plane as system of record
-- `n8n` as the trusted workflow nervous system
-- Open WebUI as the primary human-facing shell
-- Paperclip as the specialist orchestration surface
-- Hermes as a host-native execution runtime behind a gateway boundary
+The system centers on:
 
-The implementation strategy is:
+- a shared **continuity plane** (broker + Postgres) as system of record
+- **`n8n`** as the trusted workflow nervous system
+- **Open WebUI** as the primary human-facing shell
+- **Paperclip** as the specialist orchestration surface
+- **Hermes** as a host-native execution runtime behind a gateway boundary
+- **ComfyUI** as the first specialist worker (media generation via `n8n`)
 
-1. build the **local prototype** as the first concrete local-node implementation
-2. use that prototype to validate the continuity contracts and node pattern
-3. promote the validated architecture into the hardened **VPS hub**
+Implementation strategy:
+
+1. Build the **local prototype** as the first concrete node implementation.
+2. Use that prototype to validate the continuity contracts and node pattern.
+3. Promote the validated architecture into the hardened **VPS hub**.
 
 ## Architecture Review Pack
 
-Start with these documents:
+The full design lives in `docs/architecture/`. Read these in order:
 
-- `docs/architecture/overview.md`
-- `docs/architecture/service-catalog.md`
-- `docs/architecture/network-port-map.md`
-- `docs/architecture/runtime-flows.md`
-- `docs/architecture/security-observability.md`
-- `docs/architecture/inter-node-data-flow.md`
-- `docs/architecture/implementation-roadmap.md`
+1. [`north-star.md`](docs/architecture/north-star.md) — target architecture.
+2. [`current-state.md`](docs/architecture/current-state.md) — factual snapshot
+   of what is in this repository today.
+3. [`roadmap.md`](docs/architecture/roadmap.md) — ordered phases that close
+   the gap between current state and north star.
+4. [`execution-plan.md`](docs/architecture/execution-plan.md) — the concrete,
+   commit-by-commit execution plan for a working session.
+5. [`node-roles.md`](docs/architecture/node-roles.md) — node responsibilities
+   and promotion policy across VPS, prototype, engineering, and research nodes.
+6. [`overview.md`](docs/architecture/overview.md) — legacy reference only
+   (carries a deprecation banner; superseded by the four documents above).
+
+## Current Status
+
+- Branch: **`proto`**. `main` is the stable reference.
+- Phase 0 (branch hygiene + trim + plan alignment) is complete.
+- The prototype is **not** fully assembled yet: Honcho, the Hermes gateway,
+  the `orchestrator-ceo` profile, the Paperclip container, and the unified
+  launch script all land in later phases (A → H) defined in `roadmap.md` and
+  executed per `execution-plan.md`.
+- Local bringup instructions live in
+  [`stack/prototype-local/README.md`](stack/prototype-local/README.md).
+
+If you are a fresh agent session, start at
+[`docs/architecture/execution-plan.md`](docs/architecture/execution-plan.md)
+and follow the **Session Kickoff** block verbatim.
 
 ## Repo Layout
 
-- `modules/` contains upstream source references and submodules
-- `docs/architecture/` contains the current blueprint and review pack
-- `stack/topology/` contains repo-owned target and service manifests
-- `stack/control/` contains the repo-owned CLI and control-plane tooling
-- `bin/start-1215.py` is the repo-root entrypoint shim
+| Path | Contents |
+|---|---|
+| `docs/architecture/` | Review pack: north-star, current-state, roadmap, execution-plan, node-roles (+ legacy overview). |
+| `stack/prototype-local/` | Local-node Docker Compose stack and bringup scripts (the only runnable target today). |
+| `stack/broker/` | Broker FastAPI service source (the continuity plane API). |
+| `stack/sql/` | Broker schema migrations. |
+| `stack/topology/` | Repo-owned target, service, and role manifests. |
+| `stack/roles/` | Per-role Docker Compose overlays (scaffolded; partially populated). |
+| `stack/control/` | Control-plane CLI (`start-1215`). Phase H rebuilds this as `bin/1215`. |
+| `stack/services/` | (Reserved for Phase B–D: Honcho + Hermes gateway host-native units.) |
+| `modules/` | Upstream source submodules referenced by the prototype. |
+| `claude-memory-compiler/` | Reference submodule (memory compiler; not wired into runtime). |
 
-## Current CLI
+## Control CLI (current)
 
-The new control project is scaffolded first so the repo has a working entrypoint
-before container orchestration is implemented.
+Until Phase H lands `bin/1215`, the control CLI is invoked directly via
+`uv`:
 
 ```bash
-./bin/start-1215.py doctor
-./bin/start-1215.py targets
-./bin/start-1215.py services --target prototype-local
-./bin/start-1215.py docs
+cd stack/control
+uv sync
+uv run start-1215 doctor
+uv run start-1215 targets
+uv run start-1215 services --target prototype-local
+uv run start-1215 docs
 ```
 
-These commands currently validate prerequisites and expose the new manifests.
-They do not bring up services yet.
+These commands validate prerequisites and expose the topology manifests;
+they do **not** bring up services yet. Bringup lives in
+`stack/prototype-local/scripts/setup_hermes_honcho_paperclip.py` and
+`docker-compose.substrate.yml` today, and will be subsumed by
+`./bin/1215 up` in Phase H.
 
-## Upstream References
+## Upstream Module References
+
+Declared in [`.gitmodules`](.gitmodules):
 
 - `modules/local-ai-packaged`
 - `modules/hermes-agent`
@@ -61,19 +98,4 @@ They do not bring up services yet.
 - `modules/honcho`
 - `modules/n8n-mcp`
 
-
-• Committed.
-
-  - Commit: e1a4b21
-  - Includes:
-      - stack/prototype-local/scripts/setup_hermes_honcho_paperclip.py (new)
-      - stack/prototype-local/README.md update
-  - The script is functioning; I ran it successfully and it verified:
-      - Honcho health on 127.0.0.1:18000
-      - Paperclip health on 127.0.0.1:3100/api/health
-      - Hermes↔Honcho cross-session memory smoke test (write/read token)
-
-
-  python3 stack/prototype-local/scripts/setup_hermes_honcho_paperclip.py --model openai/gpt-5
-
-  (or Sonnet/Gemini/OpenRouter model IDs you prefer).
+These are reference-only — the prototype does not fork or vendor them.

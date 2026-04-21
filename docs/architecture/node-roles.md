@@ -2,10 +2,11 @@
 
 This document defines the role of each node type in the broader system.
 
-See also: [Deployment Model](deployment-model.md). `node-roles.md` defines the
-optimization goal and governance posture of each node type. The deployment model
-defines how shared core, role overlays, and per-node manifests should be laid
-out in the repo.
+`node-roles.md` defines the optimization goal and governance posture of each
+node type. For how shared core, role overlays, and per-node manifests are laid
+out in the repo, see [current-state.md](current-state.md) (actual layout) and
+[north-star.md](north-star.md) (target layout). (The earlier
+`deployment-model.md` has been superseded and was removed in the Phase 0 trim.)
 
 The purpose is to keep the architecture from collapsing into "every machine does
 everything." Different nodes are allowed to optimize for different things:

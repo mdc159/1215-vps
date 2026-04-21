@@ -31,7 +31,8 @@ This is what makes the stack more elegant than "copy and stack":
 - infrastructure services are retained only when they serve a defined role
 
 For how those roles are split across the VPS and future local nodes, see
-[Deployment Model](deployment-model.md) and [Node Roles](node-roles.md).
+[Node Roles](node-roles.md). (The earlier `deployment-model.md` has been
+superseded by `north-star.md` and was removed in the Phase 0 trim.)
 
 ## Layered Architecture
 
@@ -239,4 +240,4 @@ Deferred beyond v1:
 
 For node-specific responsibilities and promotion policy across VPS, prototype,
 engineering, and research nodes, see
-[node-roles.md](/mnt/data/Documents/repos/1215-vps/docs/architecture/node-roles.md).
+[node-roles.md](node-roles.md).

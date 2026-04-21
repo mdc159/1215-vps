@@ -29,7 +29,7 @@ Every host port is bound to `127.0.0.1` only — no `0.0.0.0` binds exist.
 | `clickhouse` | `clickhouse/clickhouse-server` (unpinned) | `127.0.0.1:8123 -> 8123`, `127.0.0.1:9000 -> 9000`, `127.0.0.1:9009 -> 9009` | `clickhouse:8123/9000` | `prototype_clickhouse_{data,logs}` |
 | `langfuse-worker` | `langfuse/langfuse-worker:3` | `127.0.0.1:3030 -> 3030` | `langfuse-worker:3030` | — |
 | `langfuse-web` | `langfuse/langfuse:3` | `127.0.0.1:3000 -> 3000` | `langfuse-web:3000` | — |
-| `open-webui` | `ghcr.io/open-webui/open-webui@sha256:000b87a6…` | `127.0.0.1:8080 -> 8080` | `open-webui:8080` | `prototype_open_webui_data` |
+| `open-webui` | `ghcr.io/open-webui/open-webui@sha256:eb874c05…` (v0.9.0) | `127.0.0.1:8080 -> 8080` | `open-webui:8080` | `prototype_open_webui_data` |
 | `comfyui` | `ghcr.io/lecode-official/comfyui-docker@sha256:e27739fc…` | `127.0.0.1:8188 -> 8188` | `comfyui:8188` | `prototype_comfyui_{models,custom_nodes,output}`, `prototype_shared_data` |
 | `n8n` | Built from `stack/prototype-local/n8n` (base `n8nio/n8n:2.3.6`) | `127.0.0.1:5678 -> 5678` | `n8n:5678` | `prototype_n8n_data`, `prototype_shared_data` |
 | `n8n-mcp` | `ghcr.io/czlonkowski/n8n-mcp:2.33.5` | `127.0.0.1:13000 -> 3000` | `n8n-mcp:3000` | `prototype_n8n_mcp_data` |
@@ -157,28 +157,25 @@ section for their compose-file state.
 
 Directory state under [stack/roles/](../../stack/roles/):
 
-- `core/` — empty directory, no compose file
-- `vps/` — empty directory, no compose file
+- `README.md` — brief overview of the overlay system
 - `builder/docker-compose.role.yml` — present, content is `services: {}`
 - `media-cpu/docker-compose.role.yml` — present
 - `media-gpu/docker-compose.role.yml` — present
 - `tools/docker-compose.role.yml` — present
 
-The role overlay system is scaffolded but only partially populated.
+No `core/` or `vps/` overlay directories exist on disk — the shared core is
+defined directly in `stack/prototype-local/docker-compose.substrate.yml`, and
+the `vps` role has no compose overlay yet. The role overlay system is
+scaffolded but only partially populated.
 
 ## Node Manifests
 
-[nodes/](../../nodes/) contains three placeholder directories:
-
-- `nodes/vps/` — `README.md`, `roles.env.example` (role string:
-  `core,vps,media-cpu,tools`)
-- `nodes/engineering-pc/` — `README.md`, `roles.env.example` (role string:
-  `core,media-gpu,tools`)
-- `nodes/local-builder/` — `README.md`, `roles.env.example` (role string:
-  `core,builder,tools`)
-
-All files are `.example`s. No live `roles.env` file for any node. This
-machine (the Linux prototype) does not yet have a node manifest directory.
+No `nodes/` directory exists at the repo root. Earlier placeholder manifests
+for `vps`, `engineering-pc`, and `local-builder` have been removed as part of
+the Phase 0 trim; they carried no live configuration and the only node that
+matters today is this Linux prototype machine, which does not yet have a
+manifest directory either. Phase A creates `nodes/linux-prototype/` with a
+`README.md` and a `roles.env.example` (role string: `core,media-cpu,tools`).
 
 ## Environment Configuration
 
@@ -192,25 +189,13 @@ files exist under `modules/*/`.
 No committed secrets exist in the repo (verified via `.gitignore` coverage
 of `stack/prototype-local/.env`).
 
-## Audit Artifacts
-
-[docs/architecture/audit/](audit/) contains:
-
-- `drift-matrix.md` — claim → evidence → status matrix across all 14
-  repo-owned architecture docs
-- `claims-index.json` — machine-readable list of claims and statuses
-- `README.md` — narrative summary of top findings
-
-These are historical outputs of an audit run; this current-state document
-distils the factual parts but does not re-analyze drift.
-
 ## What Is Decidedly Not In The Repo
 
 Explicit list of things referenced by `north-star.md` but absent today:
 
 - **`stack/services/hermes-gateway/`** — no directory, no daemon code, no
   systemd unit, no Unix domain socket contract. The "host-only Hermes
-  gateway" is documented in `service-catalog.md` but not implemented.
+  gateway" is called out in `north-star.md` but not implemented.
 - **`orchestrator-ceo` Hermes profile** — no `HERMES_HOME` layout, no
   profile config, no skills directory. The `setup_hermes_honcho_paperclip.py`
   smoke test runs Hermes against a default profile only.
