@@ -20,6 +20,7 @@ import pytest
 
 from hermes_gateway import broker as broker_mod
 from hermes_gateway.app import _build_app
+from hermes_gateway.langfuse import LangfuseClient
 
 
 @dataclass
@@ -128,8 +129,12 @@ async def client_and_broker(
     fake_tree: dict[str, Path],
 ):
     fake_broker = FakeBroker()
+    # Pass a no-op Langfuse client so the tests never hit a real
+    # Langfuse instance even if the shell has LANGFUSE_HOST set.
+    no_langfuse = LangfuseClient(host=None, public_key=None, secret_key=None)
     app = _build_app(
         broker=fake_broker,
+        langfuse=no_langfuse,
         profile_root=fake_tree["profile_root"],
         workspace_root=fake_tree["workspace_root"],
         hermes_bin=fake_tree["hermes_bin"],

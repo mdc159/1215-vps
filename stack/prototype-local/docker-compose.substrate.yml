@@ -289,6 +289,21 @@ services:
       <<: *langfuse_env
       NEXTAUTH_URL: http://127.0.0.1:3000
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-prototype-nextauth-secret}
+      # LANGFUSE_INIT_* auto-seeds an org / project / user / API keys on
+      # first boot so Phase G (Langfuse instrumentation) has a ready
+      # target without a manual browser signup. Re-setting these on a
+      # running instance is safe; Langfuse skips resources that already
+      # exist. The prototype PUBLIC/SECRET keys are non-secret fixtures
+      # — rotate via the Langfuse UI for anything beyond the prototype.
+      LANGFUSE_INIT_ORG_ID: prototype-org
+      LANGFUSE_INIT_ORG_NAME: Prototype Org
+      LANGFUSE_INIT_PROJECT_ID: prototype-1215
+      LANGFUSE_INIT_PROJECT_NAME: 1215 Continuity Plane
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-pk-lf-1215-prototype-public}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-sk-lf-1215-prototype-secret}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_INIT_USER_EMAIL:-prototype-owner@example.local}
+      LANGFUSE_INIT_USER_NAME: ${LANGFUSE_INIT_USER_NAME:-Prototype Owner}
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:-prototype-langfuse-password}
 
   open-webui:
     # v0.9.0 (2026-04-21)

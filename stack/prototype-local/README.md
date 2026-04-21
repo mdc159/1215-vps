@@ -241,6 +241,30 @@ The base `n8n` image is pinned through `N8N_BASE_IMAGE` in
 easy to freeze to a late `1.x` image if `2.x` hardening or runtime regressions
 block required local workflows.
 
+### Langfuse tracing notes
+
+The `hermes-gateway` (Phase G) opens a Langfuse trace per run, keyed by
+`run_id`. The *same* `run_id` is also written to every broker event's
+`metadata_json.langfuse_trace_id`, so a span in Langfuse and its
+corresponding broker row share one correlation key.
+
+Filtering by run in the UI:
+
+- Filter by `sessionId` to group all runs inside one CEO session.
+- Open `http://127.0.0.1:3000/project/prototype-1215/traces/<run_id>`
+  to jump straight to the lifecycle spans for a specific run.
+- For API access, the trace endpoint is
+  `GET /api/public/traces/<run_id>` and
+  `GET /api/public/observations?traceId=<run_id>`.
+
+On each lifecycle transition the gateway emits a SPAN with
+`name={run.created|run.started|run.completed|run.failed}`; failed runs
+carry `level=ERROR` so dashboards can colour-code them distinctly.
+
+If `LANGFUSE_HOST` / `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` are
+absent from `stack/prototype-local/.env`, the gateway's Langfuse
+client silently no-ops and broker continuity is unaffected.
+
 ### MinIO artifact notes
 
 Buckets created automatically at startup:

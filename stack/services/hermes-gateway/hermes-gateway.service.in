@@ -10,6 +10,11 @@ WorkingDirectory=@GATEWAY_DIR@
 Environment=PYTHONUNBUFFERED=1
 Environment=HERMES_GATEWAY_SOCKET=%t/hermes-gateway/gateway.sock
 Environment=HERMES_GATEWAY_BROKER_URL=http://127.0.0.1:8090
+# Phase G: Langfuse config (LANGFUSE_HOST/PUBLIC_KEY/SECRET_KEY) is
+# rendered into this file by install.sh from prototype-local/.env; the
+# leading `-` makes systemd tolerate the file being absent on setups
+# that don't run the Langfuse substrate.
+EnvironmentFile=-@GATEWAY_DIR@/.gateway.env
 
 # systemd --user creates/cleans %t/hermes-gateway (= $XDG_RUNTIME_DIR/hermes-gateway)
 # at unit start and removes it at unit stop. RuntimeDirectoryMode=0755 lets the

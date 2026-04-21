@@ -243,6 +243,16 @@ def build_spawn_plan(
         "LC_ALL": "C.UTF-8",
     }
     env.update(parse_env_file(env_file))
+    # Phase G: run-scoped correlation IDs. Applied *after* the profile
+    # .env so a stale LANGFUSE_TRACE_ID accidentally committed into a
+    # profile can never override the per-run value the gateway just
+    # minted. The broker auto-stamps metadata.langfuse_trace_id=run_id
+    # on events too, so child spans and broker events share one key
+    # even if the child forgets to pass --run-id explicitly.
+    env["HERMES_RUN_ID"] = run_id
+    env["HERMES_SESSION_ID"] = session_id
+    env["LANGFUSE_TRACE_ID"] = run_id
+    env["LANGFUSE_SESSION_ID"] = session_id
 
     argv: list[str] = [
         str(hermes_bin),

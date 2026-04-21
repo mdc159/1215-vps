@@ -64,6 +64,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from . import broker as broker_mod
+from . import langfuse as langfuse_mod
 from . import spawn as spawn_mod
 
 _log = logging.getLogger("hermes_gateway.app")
@@ -109,6 +110,7 @@ class RunState:
 def _build_app(
     *,
     broker: broker_mod.BrokerClient | None = None,
+    langfuse: langfuse_mod.LangfuseClient | None = None,
     profile_root: Path | None = None,
     workspace_root: Path | None = None,
     hermes_bin: Path | None = None,
@@ -128,15 +130,19 @@ def _build_app(
             await fastapi_app.state.broker.ensure_node()
         except broker_mod.BrokerError as exc:  # pragma: no cover - infra
             _log.warning("broker.ensure_node failed at startup: %s", exc)
+        # Open the Langfuse httpx client once; if Langfuse env is not
+        # set the context manager installs a no-op client.
+        await fastapi_app.state.langfuse.__aenter__()
         try:
             yield
         finally:
             # SIGTERM any in-flight process groups so shutdown doesn't
-            # leak orphans; then close the broker http client.
+            # leak orphans; then close the broker and Langfuse clients.
             for state in list(fastapi_app.state.runs.values()):
                 with contextlib.suppress(ProcessLookupError):
                     os.killpg(state.process.pid, signal.SIGTERM)
             await fastapi_app.state.broker.aclose()
+            await fastapi_app.state.langfuse.aclose()
 
     app = FastAPI(
         title="hermes-gateway",
@@ -150,6 +156,7 @@ def _build_app(
 
     app.state.runs: dict[str, RunState] = {}
     app.state.broker = broker or broker_mod.BrokerClient()
+    app.state.langfuse = langfuse or langfuse_mod.LangfuseClient()
     app.state.profile_root = profile_root or spawn_mod.DEFAULT_PROFILE_ROOT
     app.state.workspace_root = workspace_root or spawn_mod.DEFAULT_WORKSPACE_ROOT
     app.state.hermes_bin = hermes_bin or spawn_mod.DEFAULT_HERMES_BIN
@@ -200,6 +207,14 @@ def _build_app(
                     state.run_id,
                     exc,
                 )
+
+            await app.state.langfuse.create_span(
+                trace_id=state.run_id,
+                name=event_type,
+                level="DEFAULT" if rc == 0 else "ERROR",
+                status_message=None if rc == 0 else f"returncode={rc}",
+                metadata={"profile": state.profile, "returncode": rc},
+            )
 
     # -- endpoints ---------------------------------------------------
 
@@ -258,6 +273,22 @@ def _build_app(
         except broker_mod.BrokerError as exc:
             _log.warning("broker publish run.created failed: %s", exc)
 
+        # Open a Langfuse trace keyed by run_id so subsequent spans and
+        # broker events can be cross-referenced. No-op if Langfuse env
+        # is not configured.
+        await app.state.langfuse.create_trace(
+            run_id=run_id,
+            session_id=body.session_id,
+            profile=body.profile,
+            prompt=body.prompt,
+            metadata={"model": body.model},
+        )
+        await app.state.langfuse.create_span(
+            trace_id=run_id,
+            name="run.created",
+            metadata={"profile": body.profile, "model": body.model},
+        )
+
         # asyncio subprocess gives us native async stream reading, no
         # thread pool round-trips required.
         proc = await asyncio.create_subprocess_exec(
@@ -289,6 +320,12 @@ def _build_app(
             )
         except broker_mod.BrokerError as exc:
             _log.warning("broker publish run.started failed: %s", exc)
+
+        await app.state.langfuse.create_span(
+            trace_id=run_id,
+            name="run.started",
+            metadata={"profile": body.profile, "pid": proc.pid},
+        )
 
         asyncio.create_task(_monitor_run(state))
 

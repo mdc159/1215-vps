@@ -259,6 +259,14 @@ def create_run(run: RunCreate) -> dict[str, Any]:
 
 @app.post("/events")
 def create_event(event: EventCreate) -> dict[str, Any]:
+    # Phase G: if the event belongs to a run but doesn't carry an
+    # explicit Langfuse trace_id, stamp it with run_id. The gateway
+    # uses run_id as trace_id so Langfuse spans + broker events share
+    # one correlation key without clients having to thread it through.
+    metadata = dict(event.metadata_json)
+    if event.run_id and "langfuse_trace_id" not in metadata:
+        metadata["langfuse_trace_id"] = event.run_id
+
     with db_cursor() as cursor:
         cursor.execute(
             """
@@ -304,7 +312,7 @@ def create_event(event: EventCreate) -> dict[str, Any]:
                 event.source_event_hash,
                 event.occurred_at,
                 psycopg.types.json.Jsonb(event.payload_json),
-                psycopg.types.json.Jsonb(event.metadata_json),
+                psycopg.types.json.Jsonb(metadata),
                 event.node_id,
                 event.idempotency_key,
             ),

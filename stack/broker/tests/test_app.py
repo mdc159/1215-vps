@@ -265,3 +265,163 @@ def test_list_events_rejects_below_minimum_after_seq() -> None:
     client = TestClient(broker_app_module.app)
     response = client.get("/events", params={"after_seq": -1})
     assert response.status_code == 422
+
+
+def test_create_event_stamps_langfuse_trace_id_when_run_id_present(monkeypatch) -> None:
+    """Phase G: events carrying run_id must get metadata.langfuse_trace_id
+    stamped automatically so Langfuse spans and broker events can be
+    correlated by a single key."""
+    executed: dict[str, object] = {}
+    _patch_cursor(
+        monkeypatch,
+        executed,
+        fetchone={
+            "event_seq": 1,
+            "event_id": "e-1",
+            "event_type": "memory.published",
+            "payload_version": 1,
+            "node_id": "linux-prototype",
+            "session_id": "sess-1",
+            "run_id": "run-abc",
+            "idempotency_key": "k-1",
+            "source_event_id": None,
+            "source_event_hash": None,
+            "occurred_at": "2026-04-21T00:00:00Z",
+            "recorded_at": "2026-04-21T00:00:00Z",
+            "payload_json": {},
+            "metadata_json": {"langfuse_trace_id": "run-abc"},
+        },
+    )
+
+    client = TestClient(broker_app_module.app)
+    response = client.post(
+        "/events",
+        json={
+            "event_id": "e-1",
+            "event_type": "memory.published",
+            "payload_version": 1,
+            "node_id": "linux-prototype",
+            "session_id": "sess-1",
+            "run_id": "run-abc",
+            "idempotency_key": "k-1",
+            "occurred_at": "2026-04-21T00:00:00Z",
+            "payload_json": {},
+            "metadata_json": {},
+        },
+    )
+
+    assert response.status_code == 200
+    # The metadata_json jsonb parameter is the 12th positional arg (index 11)
+    # — the query inserts in column order and metadata_json is last.
+    params = executed["params"]
+    assert isinstance(params, tuple)
+    # Find the Jsonb-wrapped metadata param; it's the one whose `obj`
+    # dict contains "langfuse_trace_id".
+    found = False
+    for p in params:
+        obj = getattr(p, "obj", None)
+        if isinstance(obj, dict) and obj.get("langfuse_trace_id") == "run-abc":
+            found = True
+            break
+    assert found, f"expected langfuse_trace_id=run-abc in params, got {params}"
+
+
+def test_create_event_preserves_explicit_langfuse_trace_id(monkeypatch) -> None:
+    """If the caller passed an explicit langfuse_trace_id in metadata,
+    the broker must not overwrite it even when run_id is also set."""
+    executed: dict[str, object] = {}
+    _patch_cursor(
+        monkeypatch,
+        executed,
+        fetchone={
+            "event_seq": 1,
+            "event_id": "e-2",
+            "event_type": "memory.published",
+            "payload_version": 1,
+            "node_id": "linux-prototype",
+            "session_id": "sess-1",
+            "run_id": "run-abc",
+            "idempotency_key": "k-2",
+            "source_event_id": None,
+            "source_event_hash": None,
+            "occurred_at": "2026-04-21T00:00:00Z",
+            "recorded_at": "2026-04-21T00:00:00Z",
+            "payload_json": {},
+            "metadata_json": {"langfuse_trace_id": "trace-override"},
+        },
+    )
+
+    client = TestClient(broker_app_module.app)
+    response = client.post(
+        "/events",
+        json={
+            "event_id": "e-2",
+            "event_type": "memory.published",
+            "payload_version": 1,
+            "node_id": "linux-prototype",
+            "session_id": "sess-1",
+            "run_id": "run-abc",
+            "idempotency_key": "k-2",
+            "occurred_at": "2026-04-21T00:00:00Z",
+            "payload_json": {},
+            "metadata_json": {"langfuse_trace_id": "trace-override"},
+        },
+    )
+
+    assert response.status_code == 200
+    params = executed["params"]
+    found = False
+    for p in params:
+        obj = getattr(p, "obj", None)
+        if isinstance(obj, dict) and obj.get("langfuse_trace_id") == "trace-override":
+            found = True
+            break
+    assert found, f"expected explicit langfuse_trace_id preserved, got {params}"
+
+
+def test_create_event_without_run_id_does_not_stamp_trace_id(monkeypatch) -> None:
+    """Events without run_id (e.g. node-level heartbeats) must not get
+    a synthesized trace_id, because there is no trace to attach to."""
+    executed: dict[str, object] = {}
+    _patch_cursor(
+        monkeypatch,
+        executed,
+        fetchone={
+            "event_seq": 1,
+            "event_id": "e-3",
+            "event_type": "node.heartbeat",
+            "payload_version": 1,
+            "node_id": "linux-prototype",
+            "session_id": None,
+            "run_id": None,
+            "idempotency_key": "k-3",
+            "source_event_id": None,
+            "source_event_hash": None,
+            "occurred_at": "2026-04-21T00:00:00Z",
+            "recorded_at": "2026-04-21T00:00:00Z",
+            "payload_json": {},
+            "metadata_json": {},
+        },
+    )
+
+    client = TestClient(broker_app_module.app)
+    response = client.post(
+        "/events",
+        json={
+            "event_id": "e-3",
+            "event_type": "node.heartbeat",
+            "payload_version": 1,
+            "node_id": "linux-prototype",
+            "idempotency_key": "k-3",
+            "occurred_at": "2026-04-21T00:00:00Z",
+            "payload_json": {},
+            "metadata_json": {},
+        },
+    )
+
+    assert response.status_code == 200
+    params = executed["params"]
+    for p in params:
+        obj = getattr(p, "obj", None)
+        if isinstance(obj, dict):
+            assert "langfuse_trace_id" not in obj

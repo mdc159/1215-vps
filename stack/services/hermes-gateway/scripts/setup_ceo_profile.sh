@@ -58,6 +58,9 @@ fi
 # -- Parse the stack .env (KEY=VALUE; comments ignored) -----------------------
 openrouter_api_key=""
 minio_root_password=""
+langfuse_host=""
+langfuse_public_key=""
+langfuse_secret_key=""
 while IFS= read -r line; do
   [[ "${line}" =~ ^[[:space:]]*# ]] && continue
   [[ -z "${line//[[:space:]]/}" ]] && continue
@@ -66,6 +69,9 @@ while IFS= read -r line; do
   case "${key}" in
     OPENROUTER_API_KEY) openrouter_api_key="${value}" ;;
     MINIO_ROOT_PASSWORD) minio_root_password="${value}" ;;
+    LANGFUSE_HOST) langfuse_host="${value}" ;;
+    LANGFUSE_PUBLIC_KEY) langfuse_public_key="${value}" ;;
+    LANGFUSE_SECRET_KEY) langfuse_secret_key="${value}" ;;
   esac
 done <"${env_source}"
 
@@ -178,6 +184,15 @@ MINIO_ACCESS_KEY=minio
 MINIO_SECRET_KEY=${minio_root_password}
 MINIO_ARTIFACTS_BUCKET=artifacts
 HERMES_NODE_ID=ceo-orchestrator
+
+# Langfuse observability (Phase G). If Hermes (or any skill) emits
+# spans while LANGFUSE_TRACE_ID/LANGFUSE_SESSION_ID are set by the
+# gateway at spawn time, the spans will land under the gateway's trace.
+# Empty here = Hermes emits nothing to Langfuse, which is fine — the
+# gateway still emits 3 lifecycle spans per run on its own.
+LANGFUSE_HOST=${langfuse_host}
+LANGFUSE_PUBLIC_KEY=${langfuse_public_key}
+LANGFUSE_SECRET_KEY=${langfuse_secret_key}
 EOF
 chmod 0600 "${env_path}"
 

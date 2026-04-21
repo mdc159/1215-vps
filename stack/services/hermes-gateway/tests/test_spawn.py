@@ -143,6 +143,13 @@ def test_build_spawn_plan_happy_path(fake_tree: dict[str, Path]) -> None:
     assert env["HERMES_CEO_CANARY"] == "FAKE_CANARY_XYZ"
     # LC_ALL / LANG are set to something deterministic
     assert env["LC_ALL"] == "C.UTF-8"
+    # Phase G: run_id / session_id must be injected as both HERMES_* and
+    # LANGFUSE_* so child processes that emit Langfuse spans share the
+    # gateway's trace_id without any extra plumbing.
+    assert env["HERMES_RUN_ID"] == "run-001"
+    assert env["HERMES_SESSION_ID"] == "sess-001"
+    assert env["LANGFUSE_TRACE_ID"] == "run-001"
+    assert env["LANGFUSE_SESSION_ID"] == "sess-001"
 
 
 def test_build_spawn_plan_model_override_appended(fake_tree: dict[str, Path]) -> None:
