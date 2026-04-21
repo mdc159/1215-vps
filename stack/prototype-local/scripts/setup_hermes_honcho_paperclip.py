@@ -99,7 +99,12 @@ def wait_for_honcho() -> dict[str, object]:
 
 
 def configure_hermes(openrouter_api_key: str, model: str) -> dict[str, object]:
-    run(["uv", "sync"], cwd=HERMES_DIR)
+    # Prefer the committed uv.lock so we don't trigger Hermes's universal
+    # resolver on Python versions outside the current interpreter range.
+    if (HERMES_DIR / "uv.lock").exists():
+        run(["uv", "sync", "--frozen"], cwd=HERMES_DIR)
+    else:
+        run(["uv", "sync"], cwd=HERMES_DIR)
     run(["uv", "pip", "install", "--python", ".venv/bin/python", "honcho-ai"], cwd=HERMES_DIR)
 
     hermes_home = Path.home() / ".hermes"
