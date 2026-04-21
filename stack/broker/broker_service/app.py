@@ -147,6 +147,25 @@ class ArtifactCreate(BaseModel):
     metadata_json: dict[str, Any] = Field(default_factory=dict)
 
 
+class CheckpointUpsert(BaseModel):
+    """Provider checkpoint write.
+
+    Shape mirrors ``broker.provider_checkpoints`` in
+    ``stack/sql/broker/001_core.sql``. The primary key is
+    ``(provider_name, node_id, checkpoint_kind)``; advancing the cursor
+    is a plain UPSERT on ``cursor_value`` (monotonic advancement is a
+    client contract, not a DB constraint — the ``broadcast_ack`` skill
+    enforces it by reading-before-writing).
+    """
+
+    provider_name: str = Field(min_length=1, max_length=128)
+    node_id: str = Field(min_length=1, max_length=128)
+    checkpoint_kind: str = Field(min_length=1, max_length=64)
+    cursor_value: str = Field(min_length=1, max_length=512)
+    source_event_id: str | None = None
+    metadata_json: dict[str, Any] = Field(default_factory=dict)
+
+
 app = FastAPI(title="1215 Broker API", version="0.1.0")
 
 
@@ -299,18 +318,53 @@ def create_event(event: EventCreate) -> dict[str, Any]:
 
 
 @app.get("/events")
-def list_events(limit: int = Query(default=50, ge=1, le=500)) -> dict[str, Any]:
+def list_events(
+    limit: int = Query(default=50, ge=1, le=500),
+    event_type: str | None = Query(default=None, min_length=1, max_length=64),
+    session_id: str | None = Query(default=None, min_length=1, max_length=128),
+    run_id: str | None = Query(default=None, min_length=1, max_length=128),
+    node_id: str | None = Query(default=None, min_length=1, max_length=128),
+    after_seq: int | None = Query(default=None, ge=0),
+) -> dict[str, Any]:
+    """List events, newest first, with optional filters.
+
+    Filters are conjunctive: passing ``event_type=memory.published`` and
+    ``session_id=s-1`` returns events matching both. ``after_seq`` lets
+    a provider resume a feed from the last event it acknowledged
+    (``broadcast_ack`` writes the cursor as ``event_seq`` in text form).
+    """
+    clauses: list[str] = []
+    params: list[Any] = []
+    if event_type is not None:
+        clauses.append("event_type = %s")
+        params.append(event_type)
+    if session_id is not None:
+        clauses.append("session_id = %s")
+        params.append(session_id)
+    if run_id is not None:
+        clauses.append("run_id = %s")
+        params.append(run_id)
+    if node_id is not None:
+        clauses.append("node_id = %s")
+        params.append(node_id)
+    if after_seq is not None:
+        clauses.append("event_seq > %s")
+        params.append(after_seq)
+    where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+    params.append(limit)
+
     with db_cursor() as cursor:
         cursor.execute(
-            """
+            f"""
             SELECT event_seq, event_id, event_type, payload_version, node_id, session_id,
                    run_id, idempotency_key, source_event_id, source_event_hash,
                    occurred_at, recorded_at, payload_json, metadata_json
             FROM broker.events
+            {where}
             ORDER BY event_seq DESC
             LIMIT %s
             """,
-            (limit,),
+            tuple(params),
         )
         rows = cursor.fetchall()
     return {"events": rows, "count": len(rows)}
@@ -377,35 +431,137 @@ def create_artifact(artifact: ArtifactCreate) -> dict[str, Any]:
 @app.get("/artifacts")
 def list_artifacts(
     source_event_id: str | None = None,
+    artifact_id: str | None = Query(default=None, min_length=1, max_length=128),
+    artifact_kind: str | None = Query(default=None, min_length=1, max_length=64),
     limit: int = Query(default=50, ge=1, le=500),
 ) -> dict[str, Any]:
+    """List artifacts, newest first, with optional filters.
+
+    ``artifact_id`` was added in Phase F so ``artifact_read`` can look up
+    a single row without scanning. All filters AND together; unset
+    filters are ignored.
+    """
+    clauses: list[str] = []
+    params: list[Any] = []
+    if artifact_id is not None:
+        clauses.append("artifact_id = %s")
+        params.append(artifact_id)
+    if source_event_id is not None:
+        clauses.append("source_event_id = %s")
+        params.append(source_event_id)
+    if artifact_kind is not None:
+        clauses.append("artifact_kind = %s")
+        params.append(artifact_kind)
+    where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+    params.append(limit)
+
     with db_cursor() as cursor:
-        if source_event_id:
-            cursor.execute(
-                """
-                SELECT artifact_id, artifact_kind, source_event_id, source_event_hash,
-                       storage_backend, uri, mime_type, checksum_sha256, metadata_json, created_at
-                FROM broker.artifacts
-                WHERE source_event_id = %s
-                ORDER BY created_at DESC
-                LIMIT %s
-                """,
-                (source_event_id, limit),
-            )
-        else:
-            cursor.execute(
-                """
-                SELECT artifact_id, artifact_kind, source_event_id, source_event_hash,
-                       storage_backend, uri, mime_type, checksum_sha256, metadata_json, created_at
-                FROM broker.artifacts
-                ORDER BY created_at DESC
-                LIMIT %s
-                """,
-                (limit,),
-            )
+        cursor.execute(
+            f"""
+            SELECT artifact_id, artifact_kind, source_event_id, source_event_hash,
+                   storage_backend, uri, mime_type, checksum_sha256, metadata_json, created_at
+            FROM broker.artifacts
+            {where}
+            ORDER BY created_at DESC
+            LIMIT %s
+            """,
+            tuple(params),
+        )
         rows = cursor.fetchall()
 
     return {"artifacts": rows, "count": len(rows)}
+
+
+@app.post("/checkpoints")
+def upsert_checkpoint(checkpoint: CheckpointUpsert) -> dict[str, Any]:
+    """Advance (or create) a provider checkpoint.
+
+    Backs the ``broadcast_ack`` Hermes skill (Phase F). The SQL is a
+    plain UPSERT — monotonic advancement is a client-side invariant
+    enforced by the skill via read-before-write. The FK checks on
+    ``node_id`` and ``checkpoint_kind`` will 400 the caller if either
+    is unknown; callers must ``POST /nodes`` and pre-seed the kind
+    (seeded by ``stack/sql/broker/001_core.sql``) first.
+    """
+    with db_cursor() as cursor:
+        cursor.execute(
+            """
+            INSERT INTO broker.provider_checkpoints (
+                provider_name,
+                node_id,
+                checkpoint_kind,
+                cursor_value,
+                source_event_id,
+                metadata_json
+            )
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (provider_name, node_id, checkpoint_kind) DO UPDATE SET
+                cursor_value = EXCLUDED.cursor_value,
+                source_event_id = EXCLUDED.source_event_id,
+                updated_at = now(),
+                metadata_json = EXCLUDED.metadata_json
+            RETURNING provider_name, node_id, checkpoint_kind, cursor_value,
+                      source_event_id, updated_at, metadata_json
+            """,
+            (
+                checkpoint.provider_name,
+                checkpoint.node_id,
+                checkpoint.checkpoint_kind,
+                checkpoint.cursor_value,
+                checkpoint.source_event_id,
+                psycopg.types.json.Jsonb(checkpoint.metadata_json),
+            ),
+        )
+        row = cursor.fetchone()
+
+    if row is None:
+        raise HTTPException(status_code=500, detail="checkpoint upsert failed")
+
+    return {"checkpoint": row}
+
+
+@app.get("/checkpoints")
+def list_checkpoints(
+    provider_name: str | None = Query(default=None, min_length=1, max_length=128),
+    node_id: str | None = Query(default=None, min_length=1, max_length=128),
+    checkpoint_kind: str | None = Query(default=None, min_length=1, max_length=64),
+    limit: int = Query(default=100, ge=1, le=500),
+) -> dict[str, Any]:
+    """List provider checkpoints with optional filters.
+
+    With no filters this returns every row ordered by recency, which is
+    useful for a "board health" glance. With all three filters set the
+    response is 0 or 1 rows, suitable for an exact lookup in
+    ``broadcast_ack`` (read-before-write).
+    """
+    clauses: list[str] = []
+    params: list[Any] = []
+    if provider_name is not None:
+        clauses.append("provider_name = %s")
+        params.append(provider_name)
+    if node_id is not None:
+        clauses.append("node_id = %s")
+        params.append(node_id)
+    if checkpoint_kind is not None:
+        clauses.append("checkpoint_kind = %s")
+        params.append(checkpoint_kind)
+    where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+    params.append(limit)
+
+    with db_cursor() as cursor:
+        cursor.execute(
+            f"""
+            SELECT provider_name, node_id, checkpoint_kind, cursor_value,
+                   source_event_id, updated_at, metadata_json
+            FROM broker.provider_checkpoints
+            {where}
+            ORDER BY updated_at DESC
+            LIMIT %s
+            """,
+            tuple(params),
+        )
+        rows = cursor.fetchall()
+    return {"checkpoints": rows, "count": len(rows)}
 
 
 @app.get("/config")

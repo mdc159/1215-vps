@@ -57,6 +57,7 @@ fi
 
 # -- Parse the stack .env (KEY=VALUE; comments ignored) -----------------------
 openrouter_api_key=""
+minio_root_password=""
 while IFS= read -r line; do
   [[ "${line}" =~ ^[[:space:]]*# ]] && continue
   [[ -z "${line//[[:space:]]/}" ]] && continue
@@ -64,6 +65,7 @@ while IFS= read -r line; do
   value="${line#*=}"
   case "${key}" in
     OPENROUTER_API_KEY) openrouter_api_key="${value}" ;;
+    MINIO_ROOT_PASSWORD) minio_root_password="${value}" ;;
   esac
 done <"${env_source}"
 
@@ -71,6 +73,11 @@ if [[ -z "${openrouter_api_key}" ]]; then
   echo "ERROR: OPENROUTER_API_KEY is empty in ${env_source}." >&2
   exit 1
 fi
+
+# MINIO_ROOT_PASSWORD is optional at profile-install time — the
+# continuity-plane artifact skills need it, but a fresh prototype-local
+# setup may not yet have MinIO running. If absent, skills that need
+# MinIO will exit cleanly with a helpful error.
 
 # -- Ensure host directories exist and are owned by the current user ----------
 run_sudo() {
@@ -162,11 +169,45 @@ cat >"${env_path}" <<EOF
 # positive match means the secret-handling posture has regressed.
 OPENROUTER_API_KEY=${openrouter_api_key}
 HERMES_CEO_CANARY=${canary}
+
+# Continuity-plane skill defaults (Phase F). Scripts read these to
+# avoid hard-coding endpoints; overriding via CLI flags still works.
+BROKER_URL=http://127.0.0.1:8090
+MINIO_ENDPOINT=http://127.0.0.1:9010
+MINIO_ACCESS_KEY=minio
+MINIO_SECRET_KEY=${minio_root_password}
+MINIO_ARTIFACTS_BUCKET=artifacts
+HERMES_NODE_ID=ceo-orchestrator
 EOF
 chmod 0600 "${env_path}"
 
 # Empty skills/ sentinel so future tools can rely on the dir existing.
 [[ -f "${hermes_home}/skills/.keep" ]] || : >"${hermes_home}/skills/.keep"
+
+# -- Continuity-plane skills (Phase F) ---------------------------------------
+# Rsync the in-repo skill tree into <hermes_home>/skills/continuity-plane/.
+# Delete-on-refresh semantics only under continuity-plane/ so we don't
+# nuke any hand-authored skills a user dropped next to ours. --force does
+# exactly the same thing as a normal run (skills are pure assets; there
+# is nothing to preserve, unlike .env).
+skills_source="${repo_root}/stack/services/hermes-gateway/skills/continuity-plane"
+skills_dest="${hermes_home}/skills/continuity-plane"
+if [[ -d "${skills_source}" ]]; then
+  mkdir -p "${skills_dest}"
+  if command -v rsync >/dev/null 2>&1; then
+    rsync -a --delete \
+      --exclude '__pycache__/' \
+      --exclude '*.pyc' \
+      "${skills_source}/" "${skills_dest}/"
+  else
+    rm -rf "${skills_dest}"
+    mkdir -p "${skills_dest}"
+    cp -R "${skills_source}/." "${skills_dest}/"
+  fi
+  # Scripts must be executable for the SKILL.md instructions to hold.
+  find "${skills_dest}" -name '*.py' -not -name '_*.py' -print0 \
+    | xargs -0 -r chmod 0755
+fi
 
 # -- Host-only README.md ------------------------------------------------------
 readme_path="${profile_root}/README.md"
@@ -205,6 +246,7 @@ Installed:
   - ${hermes_home}/honcho.json
   - ${env_path}  (mode 0600)
   - ${hermes_home}/skills/.keep
+  - ${hermes_home}/skills/continuity-plane/  (Phase F: broadcast_* + artifact_* skills)
   - ${workspace_root}/
   - ${readme_path}
 
