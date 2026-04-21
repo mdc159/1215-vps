@@ -4,6 +4,7 @@
       "name": "prototype-local",
       "summary": "First concrete local-node implementation with no public ingress and the same continuity contracts as the hub.",
       "ingress": "local-only-or-tailnet",
+      "env_file": "stack/prototype-local/.env",
       "compose_files": [
         "stack/prototype-local/docker-compose.substrate.yml"
       ],

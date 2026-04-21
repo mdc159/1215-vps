@@ -1,0 +1,34 @@
+{
+  "roles": {
+    "core": {
+      "summary": "Shared continuity, artifact, and common substrate contracts.",
+      "compose_profiles": []
+    },
+    "vps": {
+      "summary": "User-facing hub and orchestration surfaces.",
+      "compose_profiles": []
+    },
+    "media-cpu": {
+      "summary": "CPU fallback and smoke-test media generation surfaces.",
+      "compose_profiles": [
+        "media"
+      ]
+    },
+    "media-gpu": {
+      "summary": "GPU-backed media generation surfaces.",
+      "compose_profiles": [
+        "media"
+      ]
+    },
+    "builder": {
+      "summary": "Page-build and packaging workflows.",
+      "compose_profiles": []
+    },
+    "tools": {
+      "summary": "Authoring, debugging, and MCP surfaces.",
+      "compose_profiles": [
+        "tools"
+      ]
+    }
+  }
+}

@@ -16,6 +16,20 @@ for the repo-level rule: shared contracts live once, capabilities are enabled
 by role overlays, and each future node should select roles through a small local
 manifest under `nodes/`.
 
+The first executable seam for that model now lives in `start-1215`:
+
+```bash
+./bin/start-1215 nodes
+./bin/start-1215 show-node vps
+./bin/start-1215 compose-cmd vps config
+./bin/start-1215 compose vps up -d
+```
+
+Today the example node manifests all resolve through the `prototype-local`
+target because this is still the first full runnable substrate. The important
+part is that node selection now happens through repo-owned manifests and
+role-to-profile mapping, not by hand-editing docker commands per machine.
+
 ## Scope of the first substrate slice
 
 This initial compose focuses on the foundational local services:

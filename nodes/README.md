@@ -24,6 +24,17 @@ Each node directory should contain:
 - a short `README.md`
 - any small node-specific notes that should not leak into shared core docs
 
+Current manifest keys:
+
+- `NODE_NAME`
+- `TARGET`
+- `ENABLED_ROLES`
+
+`TARGET` points at the current runnable compose target. Right now all example
+manifests resolve through `prototype-local` because that is the first complete
+runnable substrate. As dedicated node targets appear later, the manifests can
+move to those without changing the shared control CLI shape.
+
 Do not use these manifests to fork shared workflows or contracts. Keep shared
 behavior in common repo paths and use node manifests only to declare what is
 enabled locally.

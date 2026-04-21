@@ -17,6 +17,13 @@ def test_docs_command_lists_architecture_pack(capsys) -> None:
     assert "docs/architecture/inter-node-data-flow.md" in out
 
 
+def test_nodes_command_lists_manifest_examples(capsys) -> None:
+    assert cli.main(["nodes"]) == 0
+    out = capsys.readouterr().out
+    assert "vps: target=prototype-local" in out
+    assert "engineering-pc: target=prototype-local" in out
+
+
 def test_services_command_for_prototype_target(capsys) -> None:
     assert cli.main(["services", "--target", "prototype-local"]) == 0
     out = capsys.readouterr().out
@@ -30,6 +37,27 @@ def test_show_target_command(capsys) -> None:
     out = capsys.readouterr().out
     assert '"name": "vps-hub"' in out
     assert '"ingress": "cloudflare+tunnel+tailnet"' in out
+
+
+def test_show_node_command(capsys) -> None:
+    assert cli.main(["show-node", "vps"]) == 0
+    out = capsys.readouterr().out
+    assert '"name": "vps"' in out
+    assert '"target": "prototype-local"' in out
+    assert '"compose_profiles": [' in out
+    assert '"media"' in out
+    assert '"tools"' in out
+
+
+def test_compose_cmd_for_node_includes_env_file_and_profiles(capsys) -> None:
+    assert cli.main(["compose-cmd", "vps", "config"]) == 0
+    out = capsys.readouterr().out
+    assert "--env-file" in out
+    assert "stack/prototype-local/.env" in out
+    assert "--profile media" in out
+    assert "--profile tools" in out
+    assert "stack/prototype-local/docker-compose.substrate.yml" in out
+    assert out.rstrip().endswith("config")
 
 
 def test_broker_files_command(capsys) -> None:

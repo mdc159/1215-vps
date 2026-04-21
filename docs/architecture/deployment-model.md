@@ -82,9 +82,16 @@ Examples:
 The manifest is intentionally small. It should answer:
 
 - which roles are enabled here
+- which current target compose stack it resolves through
 - what this node is optimized for
 - which services are expected to be local vs remote
 - what this node must not quietly try to do
+
+In the current repo, node manifests use:
+
+- `NODE_NAME`
+- `TARGET`
+- `ENABLED_ROLES`
 
 ## Recommended node split
 
@@ -177,6 +184,15 @@ The practical guardrail is:
 - shared core should define interfaces and common behavior
 - role overlays should define optional capability groups
 - node manifests should decide what is live on a given machine
+
+The first executable version of this now exists in `start-1215`:
+
+- `./bin/start-1215 nodes`
+- `./bin/start-1215 show-node vps`
+- `./bin/start-1215 compose-cmd vps config`
+
+The goal is to make node selection a repo-owned control-plane feature instead of
+an operator remembering ad hoc docker commands.
 
 ## Workflow portability rule
 

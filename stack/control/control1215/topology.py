@@ -12,6 +12,7 @@ class Paths:
     topology_root: Path
     docs_root: Path
     modules_root: Path
+    nodes_root: Path
 
 
 def resolve_paths() -> Paths:
@@ -23,6 +24,7 @@ def resolve_paths() -> Paths:
         topology_root=stack_root / "topology",
         docs_root=repo_root / "docs" / "architecture",
         modules_root=repo_root / "modules",
+        nodes_root=repo_root / "nodes",
     )
 
 
@@ -40,7 +42,11 @@ def load_services() -> dict:
     return load_json(paths.topology_root / "services.json")
 
 
+def load_roles() -> dict:
+    paths = resolve_paths()
+    return load_json(paths.topology_root / "roles.json")
+
+
 def list_architecture_docs() -> list[Path]:
     paths = resolve_paths()
     return sorted(paths.docs_root.glob("*.md"))
-
