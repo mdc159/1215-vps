@@ -35,9 +35,10 @@ and `media-gpu` now resolve through role-specific compose files under
 `stack/roles/`, which makes it possible to keep the shared stack definition
 while still overriding ComfyUI runtime intent per node.
 
-## Scope of the first substrate slice
+## Current runtime scope
 
-This initial compose focuses on the foundational local services:
+Today the runnable `prototype-local` compose includes these repo-owned or
+repo-configured local services:
 
 - Broker API
 - Postgres
@@ -49,8 +50,8 @@ This initial compose focuses on the foundational local services:
 - Langfuse
 - Open WebUI
 - n8n
-- Optional `n8n-mcp` `tools` profile
-- Optional ComfyUI `media` profile
+- `n8n-mcp`
+- ComfyUI
 
 It does **not** yet include:
 
@@ -59,6 +60,23 @@ It does **not** yet include:
 - Honcho
 
 Those are added after the substrate is validated.
+
+`n8n-mcp` and the ComfyUI media path are therefore part of the current
+prototype target, while Paperclip, Hermes gateway, and Honcho remain explicit
+next additions rather than already-implemented services.
+
+## Prototype done bar
+
+`prototype-local` should only be treated as the shared-core prototype when all
+of the following are true:
+
+- Open WebUI -> `n8n` -> broker works through authenticated API calls
+- Open WebUI -> `n8n` -> ComfyUI -> MinIO -> broker artifact registration works
+- `n8n-mcp` is up, authenticated, and functionally verified against local `n8n`
+- Paperclip can invoke Hermes only through the gateway
+- Hermes uses Honcho and recalls durable memory across sessions
+- fake-secret canary checks pass
+- restart resilience passes without manual repair
 
 ## Bring-up
 
@@ -70,7 +88,7 @@ docker compose -f stack/prototype-local/docker-compose.substrate.yml ps
 curl http://127.0.0.1:8090/healthz
 ```
 
-All ports bind to `127.0.0.1` only in this first slice.
+All currently implemented ports bind to `127.0.0.1` only in this slice.
 
 ## Entry points
 
@@ -83,8 +101,8 @@ Current local entry points for the validated prototype path:
 - MinIO S3 API: `http://127.0.0.1:9010`
 - MinIO Console: `http://127.0.0.1:9011`
 - Prototype MinIO webhook: `http://127.0.0.1:5678/webhook/prototype-minio-buckets`
-- Optional `n8n-mcp` HTTP server: `http://127.0.0.1:13000`
-- Optional ComfyUI UI/API: `http://127.0.0.1:8188`
+- `n8n-mcp` HTTP server: `http://127.0.0.1:13000`
+- ComfyUI UI/API: `http://127.0.0.1:8188`
 
 Repo-owned workflow and function artifacts:
 
@@ -129,11 +147,11 @@ The intended split is:
 This prevents generation, processing, and storage from collapsing into a single
 tool boundary.
 
-## Optional n8n-mcp profile
+## n8n-mcp profile
 
-The compose file includes an optional `n8n-mcp` service under the `tools`
-profile. Start it only when you want MCP-based node discovery and workflow
-management against the local `n8n` instance:
+The compose file currently defines `n8n-mcp` under the `tools` profile. For the
+prototype done bar, `n8n-mcp` should be started and validated whenever the
+local stack is exercised as the shared-core prototype:
 
 ```bash
 docker compose --env-file stack/prototype-local/.env \
@@ -192,10 +210,11 @@ Important behavior:
 - `n8n` credential IDs are instance-local. Preserve credential names in repo
   artifacts and remap IDs at import time if a workflow references credentials.
 
-### Optional ComfyUI profile
+### ComfyUI profile
 
-The compose file includes an optional `comfyui` service under the `media`
-profile. Start it only when needed:
+The compose file currently defines `comfyui` under the `media` profile. For the
+prototype done bar, the media path should be started and validated whenever the
+local stack is being exercised as the shared-core prototype:
 
 ```bash
 docker compose --env-file stack/prototype-local/.env \

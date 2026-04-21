@@ -19,6 +19,12 @@
       "exposure": "public-or-tailnet-or-local"
     },
     {
+      "name": "comfyui",
+      "layer": "media-surface",
+      "role": "local media generation surface",
+      "exposure": "local-only"
+    },
+    {
       "name": "n8n-mcp",
       "layer": "nervous-system",
       "role": "structured access to n8n capabilities",

@@ -2,28 +2,25 @@
   "targets": {
     "prototype-local": {
       "name": "prototype-local",
-      "summary": "First concrete local-node implementation with no public ingress and the same continuity contracts as the hub.",
+      "summary": "First concrete local-node implementation with local-only exposure, broker continuity, Open WebUI, n8n, n8n-mcp, and media-path validation before Paperclip, Hermes, and Honcho are added.",
       "ingress": "local-only-or-tailnet",
       "env_file": "stack/prototype-local/.env",
       "compose_files": [
         "stack/prototype-local/docker-compose.substrate.yml"
       ],
       "services": [
-        "open-webui",
-        "paperclip",
-        "n8n",
-        "n8n-mcp",
         "broker",
         "postgres",
         "valkey",
         "minio",
         "qdrant",
         "neo4j",
-        "honcho",
-        "langfuse",
         "clickhouse",
-        "hermes-gateway",
-        "hermes"
+        "open-webui",
+        "n8n",
+        "n8n-mcp",
+        "langfuse",
+        "comfyui"
       ]
     },
     "vps-hub": {
