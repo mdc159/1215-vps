@@ -1,0 +1,13 @@
+{
+  "activate": [
+    "Generate Prototype ComfyUI SD15 Artifact Webhook",
+    "Generate Prototype Media Artifact Webhook",
+    "Get Prototype ComfyUI System Stats Webhook",
+    "Get Prototype Postgres Tables Webhook",
+    "List Prototype MinIO Buckets Webhook",
+    "Queue Prototype ComfyUI SD15 Webhook"
+  ],
+  "manual_only": [
+    "Get Prototype Postgres Tables"
+  ]
+}

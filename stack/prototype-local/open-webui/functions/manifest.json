@@ -1,0 +1,16 @@
+{
+  "functions": [
+    {
+      "id": "prototype_n8n_pipe",
+      "source": "prototype_n8n_pipe.py",
+      "active": true,
+      "valves": {}
+    },
+    {
+      "id": "prototype_comfyui_pipe",
+      "source": "prototype_comfyui_pipe.py",
+      "active": true,
+      "valves": null
+    }
+  ]
+}

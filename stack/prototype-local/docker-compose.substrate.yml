@@ -220,7 +220,7 @@ services:
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-prototype-nextauth-secret}
 
   open-webui:
-    image: ghcr.io/open-webui/open-webui:main
+    image: ${OPEN_WEBUI_IMAGE:-ghcr.io/open-webui/open-webui@sha256:000b87a6ae726aa7f6611a0064ba528ba1a6aff6ead5fb3b6c89fd4a5717eb8a}
     restart: unless-stopped
     depends_on:
       broker:
@@ -231,8 +231,7 @@ services:
       - prototype_open_webui_data:/app/backend/data
 
   comfyui:
-    image: ghcr.io/lecode-official/comfyui-docker:${COMFYUI_IMAGE_TAG:-latest}
-    profiles: ["media"]
+    image: ${COMFYUI_IMAGE:-ghcr.io/lecode-official/comfyui-docker@sha256:e27739fc19d577d694ea99846a6c602e06dac963bebb2f056e22d97d19c392dd}
     restart: unless-stopped
     ports:
       - "127.0.0.1:8188:8188"
@@ -250,7 +249,7 @@ services:
     build:
       context: ./n8n
       args:
-        N8N_BASE_IMAGE: ${N8N_BASE_IMAGE:-n8nio/n8n:latest}
+        N8N_BASE_IMAGE: ${N8N_BASE_IMAGE:-n8nio/n8n:2.3.6}
     restart: unless-stopped
     depends_on:
       postgres:
@@ -280,7 +279,7 @@ services:
       - prototype_shared_data:/data/shared
 
   n8n-mcp:
-    image: ghcr.io/czlonkowski/n8n-mcp:latest
+    image: ghcr.io/czlonkowski/n8n-mcp:2.33.5
     profiles: ["tools"]
     restart: unless-stopped
     depends_on:

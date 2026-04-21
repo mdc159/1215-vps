@@ -29,7 +29,8 @@ def test_services_command_for_prototype_target(capsys) -> None:
     out = capsys.readouterr().out
     assert "open-webui" in out
     assert "broker" in out
-    assert "paperclip" in out
+    assert "n8n-mcp" in out
+    assert "comfyui" in out
 
 
 def test_show_target_command(capsys) -> None:

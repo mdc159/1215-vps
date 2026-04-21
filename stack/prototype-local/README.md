@@ -104,6 +104,22 @@ curl http://127.0.0.1:8090/healthz
 
 All currently implemented ports bind to `127.0.0.1` only in this slice.
 
+After the containers are up, run the repo-owned runtime bootstrap:
+
+```bash
+python3 stack/prototype-local/scripts/bootstrap_n8n.py
+python3 stack/prototype-local/scripts/sync_openwebui_functions.py
+```
+
+These scripts make the runtime deterministic on fresh volumes:
+
+- ensure the local `n8n` owner/project state exists
+- import the repo-owned `n8n` credentials and workflow JSON
+- activate the expected webhook workflows
+- ensure the local Open WebUI admin credentials are set from the ignored `.env`
+- upsert the repo-owned Open WebUI function models and verify they appear in
+  `/api/models`
+
 ## Entry points
 
 Current local entry points for the validated prototype path:
@@ -343,6 +359,11 @@ Admin API endpoints used successfully against `v0.7.2`:
 - `GET /api/models`
 - `POST /api/chat/completions`
 
+The repo-owned sync path is:
+
+- [stack/prototype-local/open-webui/functions/manifest.json](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/open-webui/functions/manifest.json)
+- [stack/prototype-local/scripts/sync_openwebui_functions.py](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/scripts/sync_openwebui_functions.py)
+
 Important behavior:
 
 - If `chat_id`, `session_id`, and `message_id` are present, Open WebUI may
@@ -378,6 +399,13 @@ Known gotchas already hit in this stack:
   `webhookId` and that the runtime method matches the node configuration.
 - The `n8n` CLI import commands require real file paths. They do not accept
   `--input=-`, so stdin-based imports fail with `ENOENT`.
+- The repo-owned bootstrap path lives in:
+  - [stack/prototype-local/n8n/credentials.manifest.json](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/n8n/credentials.manifest.json)
+  - [stack/prototype-local/n8n/workflows.manifest.json](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/n8n/workflows.manifest.json)
+  - [stack/prototype-local/scripts/bootstrap_n8n.py](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/scripts/bootstrap_n8n.py)
+- Current repo-owned workflows do not require `n8n`'s Python task runner. The
+  custom prototype image is intentionally limited to the static `ffmpeg` and
+  `ffprobe` addition until a real Python-node requirement exists.
 
 ## Agent onboarding
 
