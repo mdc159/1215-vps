@@ -21,6 +21,9 @@ This is what makes the stack more elegant than "copy and stack":
 - memory providers and orchestration tools are pluggable edges, not the root design
 - infrastructure services are retained only when they serve a defined role
 
+For how those roles are split across the VPS and future local nodes, see
+[Deployment Model](deployment-model.md) and [Node Roles](node-roles.md).
+
 ## Layered Architecture
 
 ```mermaid

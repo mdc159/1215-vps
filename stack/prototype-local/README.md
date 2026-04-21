@@ -5,6 +5,17 @@ architecture. It is not a throwaway dev stack. It exists to validate the
 shared continuity contracts, localhost-only exposure model, and the service mix
 before hardening the VPS hub.
 
+Within the broader split model, `prototype-local` is the first proof of:
+
+- shared core contracts
+- the VPS-oriented orchestration surface
+- optional `media-cpu` and `tools` role overlays
+
+See [docs/architecture/deployment-model.md](/mnt/data/Documents/repos/1215-vps/docs/architecture/deployment-model.md)
+for the repo-level rule: shared contracts live once, capabilities are enabled
+by role overlays, and each future node should select roles through a small local
+manifest under `nodes/`.
+
 ## Scope of the first substrate slice
 
 This initial compose focuses on the foundational local services:

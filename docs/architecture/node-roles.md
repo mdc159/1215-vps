@@ -2,6 +2,11 @@
 
 This document defines the role of each node type in the broader system.
 
+See also: [Deployment Model](deployment-model.md). `node-roles.md` defines the
+optimization goal and governance posture of each node type. The deployment model
+defines how shared core, role overlays, and per-node manifests should be laid
+out in the repo.
+
 The purpose is to keep the architecture from collapsing into "every machine does
 everything." Different nodes are allowed to optimize for different things:
 
@@ -21,6 +26,21 @@ everything." Different nodes are allowed to optimize for different things:
 
 The last column is intentional. Nodes may generate candidates, but promotion
 into shared live behavior must flow through the promotion gate.
+
+## Node types vs role overlays
+
+Keep these concepts separate:
+
+- node type: what a machine is for and how risky its behavior may be
+- role overlay: which capability groups are enabled on that machine
+
+Example:
+
+- a VPS node type may enable `core`, `vps`, and optional `tools`
+- an engineering node type may enable `core`, `media-gpu`, and optional `tools`
+
+That separation is what lets one repo support multiple nodes without
+branch-per-machine drift.
 
 ## 1. VPS Hub
 
