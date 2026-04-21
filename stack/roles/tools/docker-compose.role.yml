@@ -1,0 +1,6 @@
+name: 1215-role-tools
+
+services:
+  n8n-mcp:
+    environment:
+      N8N_MCP_ROLE: tools

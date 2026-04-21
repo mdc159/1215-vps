@@ -1,0 +1,7 @@
+name: 1215-role-media-gpu
+
+services:
+  comfyui:
+    command: ["--enable-cors-header", "*"]
+    environment:
+      COMFYUI_ACCELERATOR_MODE: ${COMFYUI_ACCELERATOR_MODE:-gpu}

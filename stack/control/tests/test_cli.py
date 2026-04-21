@@ -45,8 +45,11 @@ def test_show_node_command(capsys) -> None:
     assert '"name": "vps"' in out
     assert '"target": "prototype-local"' in out
     assert '"compose_profiles": [' in out
+    assert '"role_compose_files": [' in out
     assert '"media"' in out
     assert '"tools"' in out
+    assert '"stack/roles/media-cpu/docker-compose.role.yml"' in out
+    assert '"stack/roles/tools/docker-compose.role.yml"' in out
 
 
 def test_compose_cmd_for_node_includes_env_file_and_profiles(capsys) -> None:
@@ -54,6 +57,8 @@ def test_compose_cmd_for_node_includes_env_file_and_profiles(capsys) -> None:
     out = capsys.readouterr().out
     assert "--env-file" in out
     assert "stack/prototype-local/.env" in out
+    assert "stack/roles/media-cpu/docker-compose.role.yml" in out
+    assert "stack/roles/tools/docker-compose.role.yml" in out
     assert "--profile media" in out
     assert "--profile tools" in out
     assert "stack/prototype-local/docker-compose.substrate.yml" in out

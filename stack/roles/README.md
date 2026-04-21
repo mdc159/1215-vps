@@ -23,3 +23,13 @@ Initial role vocabulary:
 As the split becomes real, add role-specific compose fragments, env examples,
 and activation notes here instead of scattering machine-specific copies across
 the repo.
+
+The first concrete role fragments now exist:
+
+- `media-cpu`: makes ComfyUI's CPU-safe default explicit
+- `media-gpu`: removes the `--cpu` fallback so a GPU-capable target can opt into
+  the same logical media role without rewriting the base stack
+- `tools`: tags the authoring/debugging surface from a dedicated role fragment
+
+These fragments are selected through `stack/topology/roles.json` and resolved by
+`./bin/start-1215.py compose-cmd <node> ...`.

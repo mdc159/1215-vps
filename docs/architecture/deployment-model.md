@@ -194,6 +194,11 @@ The first executable version of this now exists in `start-1215`:
 The goal is to make node selection a repo-owned control-plane feature instead of
 an operator remembering ad hoc docker commands.
 
+The next step beyond manifest resolution is now also in place: selected roles
+can contribute compose fragments through `stack/topology/roles.json`. That keeps
+the common stack intact while still allowing role-specific overrides such as
+CPU-safe vs GPU-intended ComfyUI behavior.
+
 ## Workflow portability rule
 
 A workflow should declare what it needs rather than silently assuming every node

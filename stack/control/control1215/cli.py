@@ -8,7 +8,12 @@ import sys
 
 from .broker import apply_broker_sql, broker_sql_files, render_broker_sql
 from .compose import docker_compose_args, target_compose_files, target_env_file
-from .nodes import list_node_names, load_node_manifest, role_compose_profiles
+from .nodes import (
+    list_node_names,
+    load_node_manifest,
+    role_compose_files,
+    role_compose_profiles,
+)
 from .topology import list_architecture_docs, load_services, load_targets, resolve_paths
 
 
@@ -185,6 +190,7 @@ def cmd_show_node(node_name: str) -> int:
 
     try:
         profiles = role_compose_profiles(manifest.roles)
+        role_files = role_compose_files(manifest.roles)
     except KeyError as exc:
         print(f"error: unknown role '{exc.args[0]}' in node '{node_name}'", file=sys.stderr)
         return 2
@@ -194,6 +200,9 @@ def cmd_show_node(node_name: str) -> int:
         "target": manifest.target,
         "roles": list(manifest.roles),
         "compose_profiles": profiles,
+        "role_compose_files": [
+            str(path.relative_to(resolve_paths().repo_root)) for path in role_files
+        ],
         "manifest_path": str(manifest.manifest_path.relative_to(resolve_paths().repo_root)),
         "manifest_source": "example" if manifest.used_example else "live",
         "compose_files": [
@@ -213,8 +222,14 @@ def cmd_show_node(node_name: str) -> int:
 def _compose_args_for_node(node_name: str, compose_args: list[str]) -> list[str]:
     manifest = load_node_manifest(node_name)
     profiles = role_compose_profiles(manifest.roles)
+    compose_files = role_compose_files(manifest.roles)
     passthrough_args = compose_args or ["config"]
-    return docker_compose_args(manifest.target, *passthrough_args, profiles=profiles)
+    return docker_compose_args(
+        manifest.target,
+        *passthrough_args,
+        profiles=profiles,
+        compose_files=compose_files,
+    )
 
 
 def cmd_compose_cmd(node_name: str, compose_args: list[str]) -> int:

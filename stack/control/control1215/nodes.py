@@ -81,3 +81,17 @@ def role_compose_profiles(role_names: tuple[str, ...]) -> list[str]:
             if profile not in selected_profiles:
                 selected_profiles.append(profile)
     return selected_profiles
+
+
+def role_compose_files(role_names: tuple[str, ...]) -> list[Path]:
+    roles = load_roles()["roles"]
+    paths = resolve_paths()
+    selected_files: list[Path] = []
+    for role_name in role_names:
+        if role_name not in roles:
+            raise KeyError(role_name)
+        for relative_path in roles[role_name].get("compose_files", []):
+            compose_file = paths.repo_root / relative_path
+            if compose_file not in selected_files:
+                selected_files.append(compose_file)
+    return selected_files

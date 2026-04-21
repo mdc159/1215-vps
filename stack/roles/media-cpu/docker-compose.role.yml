@@ -1,0 +1,5 @@
+name: 1215-role-media-cpu
+
+services:
+  comfyui:
+    command: ["--cpu", "--enable-cors-header", "*"]

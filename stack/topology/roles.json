@@ -2,32 +2,46 @@
   "roles": {
     "core": {
       "summary": "Shared continuity, artifact, and common substrate contracts.",
-      "compose_profiles": []
+      "compose_profiles": [],
+      "compose_files": []
     },
     "vps": {
       "summary": "User-facing hub and orchestration surfaces.",
-      "compose_profiles": []
+      "compose_profiles": [],
+      "compose_files": []
     },
     "media-cpu": {
       "summary": "CPU fallback and smoke-test media generation surfaces.",
       "compose_profiles": [
         "media"
+      ],
+      "compose_files": [
+        "stack/roles/media-cpu/docker-compose.role.yml"
       ]
     },
     "media-gpu": {
       "summary": "GPU-backed media generation surfaces.",
       "compose_profiles": [
         "media"
+      ],
+      "compose_files": [
+        "stack/roles/media-gpu/docker-compose.role.yml"
       ]
     },
     "builder": {
       "summary": "Page-build and packaging workflows.",
-      "compose_profiles": []
+      "compose_profiles": [],
+      "compose_files": [
+        "stack/roles/builder/docker-compose.role.yml"
+      ]
     },
     "tools": {
       "summary": "Authoring, debugging, and MCP surfaces.",
       "compose_profiles": [
         "tools"
+      ],
+      "compose_files": [
+        "stack/roles/tools/docker-compose.role.yml"
       ]
     }
   }

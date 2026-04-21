@@ -30,6 +30,11 @@ target because this is still the first full runnable substrate. The important
 part is that node selection now happens through repo-owned manifests and
 role-to-profile mapping, not by hand-editing docker commands per machine.
 
+Selected roles may also contribute compose fragments. For example, `media-cpu`
+and `media-gpu` now resolve through role-specific compose files under
+`stack/roles/`, which makes it possible to keep the shared stack definition
+while still overriding ComfyUI runtime intent per node.
+
 ## Scope of the first substrate slice
 
 This initial compose focuses on the foundational local services:

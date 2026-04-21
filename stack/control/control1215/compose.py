@@ -32,12 +32,15 @@ def docker_compose_args(
     target_name: str,
     *extra_args: str,
     profiles: list[str] | None = None,
+    compose_files: list[Path] | None = None,
 ) -> list[str]:
     command = ["docker", "compose"]
     env_file = target_env_file(target_name)
     if env_file is not None:
         command.extend(["--env-file", str(env_file)])
     for compose_file in target_compose_files(target_name):
+        command.extend(["-f", str(compose_file)])
+    for compose_file in compose_files or []:
         command.extend(["-f", str(compose_file)])
     for profile in profiles or []:
         command.extend(["--profile", profile])
