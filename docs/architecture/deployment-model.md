@@ -199,6 +199,12 @@ can contribute compose fragments through `stack/topology/roles.json`. That keeps
 the common stack intact while still allowing role-specific overrides such as
 CPU-safe vs GPU-intended ComfyUI behavior.
 
+Important constraint: the existence of node manifests and role overlays does not
+mean the system is ready for serious node parallelization. The current split
+gate is defined in [Node Rollout Plan](node-rollout-plan.md): minimum Paperclip,
+Hermes gateway, and Honcho memory must be integrated and tested before node
+specialization becomes active implementation work.
+
 ## Workflow portability rule
 
 A workflow should declare what it needs rather than silently assuming every node

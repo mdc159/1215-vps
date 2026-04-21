@@ -102,6 +102,19 @@ This roadmap translates the approved architecture into build order. It is intent
 - container-to-host coupling expanding beyond the gateway
 - unclear ownership of workspace and profile state
 
+## Shared-Core Parallelization Gate
+
+Before serious node split work begins, the prototype must prove the minimum
+shared-core slice for:
+
+- Paperclip
+- Hermes gateway
+- Honcho memory
+
+This is the last shared-core milestone before node-specific parallel work. See
+[node-rollout-plan.md](node-rollout-plan.md) for the exact gate tests and the
+post-gate node tracks.
+
 ## Phase 5: Memory and Retrieval Integrations
 
 **Objective**
