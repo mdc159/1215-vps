@@ -1,5 +1,14 @@
 # 1215-VPS Architecture Overview
 
+> **Legacy document.** The authoritative architectural target for this
+> prototype is now [north-star.md](north-star.md). This document is retained
+> for historical reference; its framing and diagram have been superseded
+> (in particular: the service roles table there includes a Runtime mode
+> column, the Mermaid diagram has corrected edges, and ComfyUI is named as
+> a specialized worker). For the current repo state, see
+> [current-state.md](current-state.md); for the plan to reach the target,
+> see [roadmap.md](roadmap.md).
+
 ## Executive Summary
 `1215-vps` is a rich, self-hosted orchestration stack for a Hermes-backed autonomous business system. It is intentionally not a bare-bones deployment. The design keeps a broad service set, but reorganizes it around explicit first-party architectural roles instead of inheriting the shape of upstream projects.
 
