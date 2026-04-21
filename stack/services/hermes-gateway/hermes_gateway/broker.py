@@ -138,6 +138,32 @@ class BrokerClient:
             },
         )
 
+    async def ensure_run(
+        self,
+        *,
+        run_id: str,
+        session_id: str,
+        run_kind: str = "hermes-chat",
+        status: str = "pending",
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Register a run row.
+
+        The broker's ``broker.events`` table has a FK to
+        ``broker.runs(run_id)``; posting ``run.created`` for a run that
+        hasn't been registered yields 500. Must be called before any
+        ``publish_run_event`` that references this ``run_id``.
+        """
+        payload: dict[str, Any] = {
+            "run_id": run_id,
+            "session_id": session_id,
+            "run_kind": run_kind,
+            "status": status,
+        }
+        if metadata:
+            payload["metadata_json"] = metadata
+        await self._post("/runs", payload)
+
     async def publish_run_event(
         self,
         *,

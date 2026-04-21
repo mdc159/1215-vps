@@ -231,12 +231,22 @@ def _build_app(
             }.get(exc.reason, 400)
             raise HTTPException(status_code=status, detail={"reason": exc.reason, "detail": exc.detail}) from exc
 
-        # Make sure the session row exists before the first event
-        # lands — the broker's /events FK would otherwise 500.
+        # Make sure the session AND run rows exist before the first
+        # event lands — broker.events has FKs onto both and will 500
+        # on run_id if we skip ensure_run.
         try:
             await app.state.broker.ensure_session(body.session_id)
         except broker_mod.BrokerError as exc:
             _log.warning("broker.ensure_session failed: %s", exc)
+
+        try:
+            await app.state.broker.ensure_run(
+                run_id=run_id,
+                session_id=body.session_id,
+                metadata={"profile": body.profile, "model": body.model},
+            )
+        except broker_mod.BrokerError as exc:
+            _log.warning("broker.ensure_run failed: %s", exc)
 
         try:
             await app.state.broker.publish_run_event(

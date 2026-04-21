@@ -1,0 +1,46 @@
+[Unit]
+Description=hermes-gateway (host-side UDS daemon for Hermes runs)
+Documentation=file:@GATEWAY_DIR@/README.md
+After=network-online.target honcho.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=@GATEWAY_DIR@
+Environment=PYTHONUNBUFFERED=1
+Environment=HERMES_GATEWAY_SOCKET=%t/hermes-gateway/gateway.sock
+Environment=HERMES_GATEWAY_BROKER_URL=http://127.0.0.1:8090
+
+# systemd --user creates/cleans %t/hermes-gateway (= $XDG_RUNTIME_DIR/hermes-gateway)
+# at unit start and removes it at unit stop. RuntimeDirectoryMode=0755 lets the
+# Paperclip container (same UID) bind-mount the directory and reach the socket;
+# UMask=0002 makes the uvicorn-created socket mode 0664, which is sufficient
+# for the prototype. Phase E will tighten with a dedicated group.
+RuntimeDirectory=hermes-gateway
+RuntimeDirectoryMode=0755
+UMask=0002
+
+# Stale socket from a crashed previous run would make uvicorn refuse to bind.
+ExecStartPre=/bin/sh -c 'rm -f %t/hermes-gateway/gateway.sock'
+ExecStart=@UVICORN_BIN@ hermes_gateway.app:app \
+  --uds %t/hermes-gateway/gateway.sock \
+  --log-level info \
+  --no-access-log
+
+Restart=on-failure
+RestartSec=3
+TimeoutStartSec=30
+TimeoutStopSec=15
+
+# Tighten the sandbox as much as systemd --user allows. These are
+# advisory-only under user units (no CAP_SYS_ADMIN) but still useful.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+# The gateway reads profile secrets from /var/lib/hermes/** and writes nothing
+# under $HOME; /var/lib is the only writable tree aside from the runtime dir.
+ReadWritePaths=/var/lib/hermes /var/lib/paperclip/workspaces
+ReadOnlyPaths=@GATEWAY_DIR@
+
+[Install]
+WantedBy=default.target

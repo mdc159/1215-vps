@@ -28,6 +28,7 @@ class FakeBroker:
 
     node_calls: int = 0
     session_calls: list[str] = field(default_factory=list)
+    run_calls: list[dict[str, Any]] = field(default_factory=list)
     events: list[dict[str, Any]] = field(default_factory=list)
     closed: bool = False
     fail_next_ensure_node: bool = False
@@ -40,6 +41,25 @@ class FakeBroker:
 
     async def ensure_session(self, session_id: str, *, surface: str = "x") -> None:
         self.session_calls.append(session_id)
+
+    async def ensure_run(
+        self,
+        *,
+        run_id: str,
+        session_id: str,
+        run_kind: str = "hermes-chat",
+        status: str = "pending",
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        self.run_calls.append(
+            {
+                "run_id": run_id,
+                "session_id": session_id,
+                "run_kind": run_kind,
+                "status": status,
+                "metadata": metadata or {},
+            }
+        )
 
     async def publish_run_event(
         self,
@@ -162,13 +182,13 @@ async def test_start_run_happy_path(client_and_broker) -> None:
     assert completed["payload"]["returncode"] == 0
 
 
-async def test_start_run_session_row_ensured_before_created_event(
+async def test_start_run_session_and_run_rows_ensured_before_created_event(
     client_and_broker,
 ) -> None:
-    """The broker would reject run.created if session_id doesn't exist;
-    make sure the gateway creates the session first."""
+    """The broker would reject run.created if session_id or run_id
+    don't exist; make sure the gateway creates both first."""
     client, broker, _ = client_and_broker
-    await client.post(
+    resp = await client.post(
         "/runs/start",
         json={
             "profile": "orchestrator-ceo",
@@ -176,8 +196,11 @@ async def test_start_run_session_row_ensured_before_created_event(
             "prompt": "p",
         },
     )
-    # ensure_session called before the first event referencing it.
+    run_id = resp.json()["run_id"]
     assert broker.session_calls == ["sess-order"]
+    assert len(broker.run_calls) == 1
+    assert broker.run_calls[0]["run_id"] == run_id
+    assert broker.run_calls[0]["session_id"] == "sess-order"
 
 
 # ---- /runs/start rejections ----------------------------------------

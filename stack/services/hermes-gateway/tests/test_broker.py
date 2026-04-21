@@ -69,6 +69,27 @@ async def test_ensure_session_posts_expected_payload(
     }
 
 
+async def test_ensure_run_posts_expected_payload(
+    httpx_mock: HTTPXMock, client: BrokerClient
+) -> None:
+    httpx_mock.add_response(
+        url=f"{DEFAULT_BROKER_URL}/runs", method="POST", json={"ok": True}
+    )
+    await client.ensure_run(
+        run_id="r-1",
+        session_id="s-1",
+        metadata={"profile": "orchestrator-ceo"},
+    )
+    posted = _json(httpx_mock.get_requests()[0])
+    assert posted == {
+        "run_id": "r-1",
+        "session_id": "s-1",
+        "run_kind": "hermes-chat",
+        "status": "pending",
+        "metadata_json": {"profile": "orchestrator-ceo"},
+    }
+
+
 async def test_publish_run_event_sets_idempotency_and_fields(
     httpx_mock: HTTPXMock, client: BrokerClient
 ) -> None:
