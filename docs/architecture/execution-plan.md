@@ -65,8 +65,8 @@ Before touching anything, read these in this order:
    git log --oneline -3              # top two commits match Handoff State
    git status --short                # only the ignorable items listed above
    ```
-3. Recreate the TODO list with these exact eight items (TodoWrite state
-   does not persist across sessions):
+3. Recreate the top-level TODO list with these exact eight items
+   (TodoWrite state does not persist across sessions):
    - `phase_a` — Tidy foundations
    - `phase_b` — Host-native Honcho
    - `phase_c` — Hermes orchestrator-ceo profile
@@ -77,17 +77,27 @@ Before touching anything, read these in this order:
    - `phase_h` — Unified launch script
 4. Run the pre-flight checks below.
 5. Work through phases in order. For each phase:
-   - Mark its TODO `in_progress`.
+   - Mark its top-level TODO `in_progress` **before** reading its
+     `roadmap.md` section.
    - Read the matching `## Phase X` section in `roadmap.md` for full
      deliverable detail.
-   - Execute the concrete steps in this document.
-   - Run the acceptance check from this document.
-   - On pass: commit per the template, then mark TODO `completed`.
-   - On fail: diagnose, fix, re-run. Do not commit. Do not advance.
+   - **Create sub-todos** for that phase's deliverables as you identify
+     them (naming pattern: `phase_<x>.<n> <short-label>`). Do this in
+     the same turn you mark the phase `in_progress`.
+   - Execute the deliverables one at a time. After each logical chunk:
+     land a WIP commit per `## Commit Cadence`, then mark that sub-todo
+     `completed` in the same turn.
+   - When all sub-todos are `completed`, run the phase's acceptance
+     check from this document.
+   - On pass: land the phase-closing commit, `git push origin proto`,
+     then mark the top-level phase TODO `completed`.
+   - On fail: diagnose, fix, re-run. Do not land the phase-closing
+     commit. Do not advance. WIP commits already in the chain stay.
 6. Stop and report when any of these is true:
    - All eight phases are `completed`.
    - An invariant would be violated by the next required action.
-   - Two focused attempts on the same phase have failed acceptance.
+   - Two focused attempts on the same phase's acceptance check have
+     failed.
    - The user interrupts.
 
 ## Pre-flight (Run Once at Session Start)
@@ -116,12 +126,30 @@ These apply to every phase:
 1. **Branch**: stay on `proto`. Never switch to `main`. Never rebase or
    force-push. Never use `git commit --amend` unless explicitly authorised
    by the user mid-session.
-2. **One phase = one commit**. Commit only after that phase's acceptance
-   check passes. If the check fails, fix the problem and re-run the check;
-   do not commit a partial phase.
-3. **TODO discipline**: mark the phase's TODO `in_progress` before starting,
-   `completed` only after the commit lands cleanly. Exactly one TODO is
-   `in_progress` at a time.
+2. **Commit often; close every phase with a phase-boundary commit**.
+   Intermediate WIP commits within a phase are encouraged — commit per
+   logical chunk (per deliverable, after tests go green, after a clean
+   refactor, after a successful manual smoke). Every phase ends with a
+   single phase-closing commit whose subject line is
+   `proto: phase <N> — <title>`; that commit is only taken once the
+   phase's full acceptance check passes. WIP commits only need to be
+   internally consistent (no broken imports, no failing tests they
+   touch, no secrets). See `## Commit Cadence` below.
+3. **Active TODO discipline**. Update the TODO list on every meaningful
+   transition, not at phase boundaries:
+   - Mark a phase `in_progress` the moment you begin reading its
+     `roadmap.md` section.
+   - Create sub-todos as you identify deliverables for the phase
+     (e.g., under Phase D: `phase_d.1 scaffold`,
+     `phase_d.2 allowlist + spawn`, `phase_d.3 broker publish`,
+     `phase_d.4 systemd unit + install.sh`, `phase_d.5 tests + AC`).
+   - Mark each sub-todo `completed` as its WIP commit lands.
+   - Mark the phase itself `completed` only after the phase-closing
+     commit lands cleanly.
+   - Exactly one todo is `in_progress` at a time.
+   - Batch todo updates into the same tool-call turn as the code/commit
+     action they describe; do not leave status mutations as trailing
+     housekeeping.
 4. **Python**: `uv add` / `uv sync` / `uv run`. Never `pip install`.
 5. **No destructive ops without explicit acceptance criteria**. No
    `docker system prune`, no `rm -rf` outside the repo, no `git clean -fdx`,
@@ -138,31 +166,59 @@ report rather than proceed.
 
 ---
 
-## Commit Discipline
+## Commit Cadence
 
-After each phase's acceptance check passes:
+Two commit shapes; use both.
+
+### WIP commits (during a phase)
+
+Commit per logical chunk. Ship them as you go. Examples:
+
+- `proto: phase D wip — scaffold hermes-gateway package (uv init + deps)`
+- `proto: phase D wip — profile allowlist + spawn arg builder + unit tests`
+- `proto: phase D wip — broker publish (run.created/started/completed/failed)`
+- `proto: phase D wip — systemd --user unit + install.sh`
+
+Each WIP commit must:
+
+- Stage only the files that belong to that chunk
+  (`git add <paths>`, not `git add -A`, unless the chunk truly touches
+  everything that is currently dirty).
+- Leave the tree in a state where any tests it touches pass
+  (`uv run pytest` in the relevant subtree returns 0).
+- Contain no secrets (`.env`, API keys, tokens). If a `.env` is dirty,
+  `git diff --cached` before committing.
+- Have a clear single-purpose message; the subject pattern is
+  `proto: phase <N> wip — <micro-title>` (max 72 chars).
+
+### Phase-closing commit (end of a phase)
+
+After the full phase acceptance check passes:
 
 ```bash
-git add -A                              # stage everything created/modified this phase
+git add -A                              # pick up any remaining stragglers
 git status                              # review staged changes — no surprises
 git diff --cached --stat                # sanity check file count and scope
 git commit -m "$(cat <<'EOF'
 proto: phase <N> — <short title>
 
-<2–4 bullet points summarising the deliverables actually landed>
+<2–4 bullet points summarising the deliverables actually landed,
+ including a one-line reference to the WIP chain if it existed>
 
 Acceptance: <one-line description of the gate that passed>
 EOF
 )"
 ```
 
-Rules for the commit message:
+Rules for the phase-closing commit:
 
-- Subject line: `proto: phase <N> — <short title>`, max 72 chars.
+- Subject line: `proto: phase <N> — <short title>` (no `wip`), max 72 chars.
 - Body: 2–4 bullets. Each bullet states a deliverable in past tense.
 - Final line: `Acceptance: <gate>`. Makes the log grep-able.
-- No "Co-authored-by" or similar trailers unless the user requests them.
-- Never `git push` automatically. The user controls when `proto` publishes.
+- No `Co-authored-by` or similar trailers unless the user requests them.
+- **Push after every phase-closing commit**: `git push origin proto`.
+  WIP commits may be pushed as you go (encouraged) or batched to the
+  phase close — either is fine. Never force-push.
 
 ---
 
