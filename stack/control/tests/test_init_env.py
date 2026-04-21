@@ -26,8 +26,8 @@ def test_render_env_preserves_existing_secret_values() -> None:
             "ENCRYPTION_KEY=replace-encryption",
             "NEXTAUTH_SECRET=replace-nextauth",
             "N8N_ENCRYPTION_KEY=replace-n8n",
-            "HONCHO_DB_PASSWORD=replace-honcho-db-password",
-            "HONCHO_DB_CONNECTION_URI=replace-honcho-db-uri",
+            "HONCHO_DATABASE_NAME=honcho",
+            "HONCHO_BASE_URL=http://127.0.0.1:18000",
             "N8N_API_KEY=replace-api",
             "OPENAI_API_KEY=",
             "",
@@ -39,8 +39,8 @@ def test_render_env_preserves_existing_secret_values() -> None:
         "ENCRYPTION_KEY": "b" * 64,
         "NEXTAUTH_SECRET": "kept-nextauth",
         "N8N_ENCRYPTION_KEY": "c" * 64,
-        "HONCHO_DB_PASSWORD": "d" * 64,
-        "HONCHO_DB_CONNECTION_URI": "postgresql+psycopg://honcho_app:old@postgres:5432/honcho",
+        "HONCHO_DATABASE_NAME": "honcho",
+        "HONCHO_BASE_URL": "http://127.0.0.1:18000",
         "N8N_API_KEY": "kept-api",
         "OPENAI_API_KEY": "kept-openai",
     }
@@ -52,11 +52,8 @@ def test_render_env_preserves_existing_secret_values() -> None:
     assert f"ENCRYPTION_KEY={'b' * 64}" in rendered
     assert "NEXTAUTH_SECRET=kept-nextauth" in rendered
     assert f"N8N_ENCRYPTION_KEY={'c' * 64}" in rendered
-    assert f"HONCHO_DB_PASSWORD={'d' * 64}" in rendered
-    assert (
-        f"HONCHO_DB_CONNECTION_URI=postgresql+psycopg://honcho_app:{'d' * 64}@postgres:5432/honcho"
-        in rendered
-    )
+    assert "HONCHO_DATABASE_NAME=honcho" in rendered
+    assert "HONCHO_BASE_URL=http://127.0.0.1:18000" in rendered
     assert "N8N_API_KEY=kept-api" in rendered
     assert "OPENAI_API_KEY=kept-openai" in rendered
 
@@ -77,18 +74,25 @@ def test_render_env_regenerates_invalid_langfuse_encryption_key() -> None:
     assert value != "not-valid"
 
 
-def test_render_env_composes_honcho_db_uri_from_password() -> None:
+def test_render_env_drops_retired_honcho_db_keys() -> None:
+    """HONCHO_DB_PASSWORD / HONCHO_DB_CONNECTION_URI were retired when Honcho
+    moved off its own pgvector container onto the shared substrate Postgres
+    (Phase B). Keys no longer present in the template must not bleed through
+    from an older local .env."""
     module = load_init_env_module()
     example = "\n".join(
         [
-            "HONCHO_DB_PASSWORD=replace-honcho-db-password",
-            "HONCHO_DB_CONNECTION_URI=replace-honcho-db-uri",
+            "POSTGRES_PASSWORD=replace-postgres",
+            "HONCHO_DATABASE_NAME=honcho",
             "",
         ]
     )
-    rendered = module.render_env(example, {"HONCHO_DB_PASSWORD": "e" * 64})
-    assert f"HONCHO_DB_PASSWORD={'e' * 64}" in rendered
-    assert (
-        f"HONCHO_DB_CONNECTION_URI=postgresql+psycopg://honcho_app:{'e' * 64}@postgres:5432/honcho"
-        in rendered
-    )
+    existing = {
+        "POSTGRES_PASSWORD": "kept-postgres",
+        "HONCHO_DB_PASSWORD": "leftover",
+        "HONCHO_DB_CONNECTION_URI": "postgresql+psycopg://honcho_app:leftover@postgres:5432/honcho",
+    }
+    rendered = module.render_env(example, existing)
+    assert "HONCHO_DB_PASSWORD" not in rendered
+    assert "HONCHO_DB_CONNECTION_URI" not in rendered
+    assert "HONCHO_DATABASE_NAME=honcho" in rendered

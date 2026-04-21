@@ -40,7 +40,6 @@ GENERATORS = {
     "N8N_OWNER_PASSWORD": lambda: token_urlsafe(),
     "NEO4J_AUTH": lambda: f"neo4j/{token_urlsafe()}",
     "OPEN_WEBUI_ADMIN_PASSWORD": lambda: token_urlsafe(),
-    "HONCHO_DB_PASSWORD": lambda: token_hex(),
     "BROKER_APP_PASSWORD": lambda: token_hex(),
     "BETTER_AUTH_SECRET": lambda: token_urlsafe(),
 }
@@ -52,8 +51,6 @@ BLANK_KEYS = {
     "OPENAI_API_KEY",
     "ANTHROPIC_API_KEY",
     "GOOGLE_API_KEY",
-    "HONCHO_LLM_API_KEY",
-    "HONCHO_EMBEDDING_API_KEY",
     "LANGFUSE_PUBLIC_KEY",
     "LANGFUSE_SECRET_KEY",
 }
@@ -78,10 +75,6 @@ def should_preserve_value(key: str, value: str, placeholders: dict[str, str]) ->
     if key == "ENCRYPTION_KEY":
         return len(value) == 64 and all(ch in "0123456789abcdef" for ch in value.lower())
     return True
-
-
-def render_honcho_db_connection_uri(password: str) -> str:
-    return f"postgresql+psycopg://honcho_app:{password}@postgres:5432/honcho"
 
 
 def render_env(example_text: str, existing_values: dict[str, str] | None = None) -> str:
@@ -111,11 +104,6 @@ def render_env(example_text: str, existing_values: dict[str, str] | None = None)
                 rendered_values[key] = existing_value
             else:
                 rendered_values[key] = placeholders[key]
-
-    if "HONCHO_DB_CONNECTION_URI" in placeholders and "HONCHO_DB_PASSWORD" in rendered_values:
-        rendered_values["HONCHO_DB_CONNECTION_URI"] = render_honcho_db_connection_uri(
-            rendered_values["HONCHO_DB_PASSWORD"]
-        )
 
     rendered_lines: list[str] = []
     for line in example_text.splitlines():
