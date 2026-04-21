@@ -60,3 +60,20 @@ They do not bring up services yet.
 - `modules/paperclip`
 - `modules/honcho`
 - `modules/n8n-mcp`
+
+
+• Committed.
+
+  - Commit: e1a4b21
+  - Includes:
+      - stack/prototype-local/scripts/setup_hermes_honcho_paperclip.py (new)
+      - stack/prototype-local/README.md update
+  - The script is functioning; I ran it successfully and it verified:
+      - Honcho health on 127.0.0.1:18000
+      - Paperclip health on 127.0.0.1:3100/api/health
+      - Hermes↔Honcho cross-session memory smoke test (write/read token)
+
+
+  python3 stack/prototype-local/scripts/setup_hermes_honcho_paperclip.py --model openai/gpt-5
+
+  (or Sonnet/Gemini/OpenRouter model IDs you prefer).

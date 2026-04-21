@@ -35,6 +35,25 @@ services:
       timeout: 3s
       retries: 10
 
+  postgres-bootstrap:
+    image: postgres:17
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-prototype-postgres}
+      LANGFUSE_DATABASE_NAME: ${LANGFUSE_DATABASE_NAME:-langfuse}
+    entrypoint: /bin/sh
+    command:
+      - -ec
+      - >
+        until pg_isready -h postgres -U postgres; do sleep 1; done
+        &&
+        if ! psql -h postgres -U postgres -d postgres -Atqc "select 1 from pg_database where datname = '$${LANGFUSE_DATABASE_NAME}'" | grep -q 1; then
+          createdb -h postgres -U postgres "$${LANGFUSE_DATABASE_NAME}";
+        fi
+
   valkey:
     image: docker.io/valkey/valkey:8-alpine
     restart: unless-stopped
@@ -153,6 +172,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-bootstrap:
+        condition: service_completed_successfully
       minio:
         condition: service_healthy
       valkey:
@@ -162,9 +183,9 @@ services:
     ports:
       - "127.0.0.1:3030:3030"
     environment: &langfuse_env
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-prototype-postgres}@postgres:5432/postgres
-      SALT: ${LANGFUSE_SALT:-prototype-langfuse-salt}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-prototype-encryption-key-32-bytes}
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-prototype-postgres}@postgres:5432/${LANGFUSE_DATABASE_NAME:-langfuse}
+      SALT: ${LANGFUSE_SALT:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
       TELEMETRY_ENABLED: "true"
       LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "true"
       CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
@@ -206,6 +227,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-bootstrap:
+        condition: service_completed_successfully
       minio:
         condition: service_healthy
       valkey:
@@ -280,7 +303,6 @@ services:
 
   n8n-mcp:
     image: ghcr.io/czlonkowski/n8n-mcp:2.33.5
-    profiles: ["tools"]
     restart: unless-stopped
     depends_on:
       n8n:

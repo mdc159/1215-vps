@@ -18,6 +18,19 @@ import requests
 from pydantic import BaseModel, Field
 
 
+def extract_event_info(event_emitter) -> tuple[Optional[str], Optional[str]]:
+    if not event_emitter or not getattr(event_emitter, "__closure__", None):
+        return None, None
+
+    for cell in event_emitter.__closure__:
+        if isinstance(request_info := cell.cell_contents, dict):
+            chat_id = request_info.get("chat_id")
+            message_id = request_info.get("message_id")
+            return chat_id, message_id
+
+    return None, None
+
+
 class Pipe:
     class Valves(BaseModel):
         n8n_url: str = Field(
@@ -162,6 +175,9 @@ class Pipe:
             self.valves.input_field: question,
             "userId": (__user__ or {}).get("id", ""),
         }
+        chat_id, message_id = extract_event_info(__event_emitter__)
+        payload["sessionId"] = chat_id or ""
+        payload["messageId"] = message_id or ""
         if self.valves.comfyui_base_url.strip():
             payload["comfyuiBaseUrl"] = self.valves.comfyui_base_url.strip()
         if self.valves.minio_public_base_url.strip():

@@ -32,7 +32,7 @@
     {
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "const source = ($json.body && Object.keys($json.body).length ? $json.body : $json.query) || {};\nconst uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;\nconst fileName = `prototype-smoke-${uniqueSuffix}.mp4`;\nconst outputDir = '/home/node/.n8n-files/prototype-media';\nconst outputPath = `${outputDir}/${fileName}`;\nreturn [{ json: { prompt: String(source.prompt || 'prototype media smoke').trim(), file_name: fileName, output_dir: outputDir, output_path: outputPath, bucket_name: 'artifacts', folder_key: 'prototype-media', object_key: `prototype-media/${fileName}` } }];"
+        "jsCode": "const source = ($json.body && Object.keys($json.body).length ? $json.body : $json.query) || {};\nconst uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;\nconst fileName = `prototype-smoke-${uniqueSuffix}.mp4`;\nconst outputDir = '/home/node/.n8n-files/prototype-media';\nconst outputPath = `${outputDir}/${fileName}`;\nconst rawSessionId = String(source.sessionId || '').trim();\nconst rawMessageId = String(source.messageId || '').trim();\nconst userId = String(source.userId || '').trim();\nconst messageKey = rawMessageId || uniqueSuffix;\nreturn [{ json: { prompt: String(source.prompt || 'prototype media smoke').trim(), file_name: fileName, output_dir: outputDir, output_path: outputPath, bucket_name: 'artifacts', folder_key: 'prototype-media', object_key: `prototype-media/${fileName}`, session_id: rawSessionId || `adhoc-session-${uniqueSuffix}`, message_id: rawMessageId, user_id: userId, run_id: `media-run-${messageKey}`, workflow_event_id: `media-workflow-event-${messageKey}`, artifact_event_id: `media-artifact-event-${messageKey}`, failed_event_id: `media-failed-event-${messageKey}`, artifact_id: `media-artifact-${messageKey}`, idempotency_key: `prototype-media:${messageKey}`, node_id: 'prototype-local-n8n-media', node_role: 'n8n.workflow.media-artifact', display_name: 'Prototype Local n8n Media Artifact Workflow', surface: 'n8n', occurred_at: new Date().toISOString() } }];"
       },
       "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000312",
       "name": "Prepare Artifact",
@@ -100,6 +100,34 @@
     },
     {
       "parameters": {
+        "executeOnce": true,
+        "command": "={{ \"SESSION_ID=\" + JSON.stringify($('Prepare Artifact').item.json.session_id) + \" MESSAGE_ID=\" + JSON.stringify($('Prepare Artifact').item.json.message_id) + \" USER_ID=\" + JSON.stringify($('Prepare Artifact').item.json.user_id) + \" RUN_ID=\" + JSON.stringify($('Prepare Artifact').item.json.run_id) + \" WORKFLOW_EVENT_ID=\" + JSON.stringify($('Prepare Artifact').item.json.workflow_event_id) + \" ARTIFACT_EVENT_ID=\" + JSON.stringify($('Prepare Artifact').item.json.artifact_event_id) + \" FAILED_EVENT_ID=\" + JSON.stringify($('Prepare Artifact').item.json.failed_event_id) + \" ARTIFACT_ID=\" + JSON.stringify($('Prepare Artifact').item.json.artifact_id) + \" OCCURRED_AT=\" + JSON.stringify($('Prepare Artifact').item.json.occurred_at) + \" NODE_ID=\" + JSON.stringify($('Prepare Artifact').item.json.node_id) + \" NODE_ROLE=\" + JSON.stringify($('Prepare Artifact').item.json.node_role) + \" DISPLAY_NAME=\" + JSON.stringify($('Prepare Artifact').item.json.display_name) + \" SURFACE=\" + JSON.stringify($('Prepare Artifact').item.json.surface) + \" PROMPT=\" + JSON.stringify($('Prepare Artifact').item.json.prompt) + \" BUCKET_NAME=\" + JSON.stringify($('Prepare Artifact').item.json.bucket_name) + \" OBJECT_KEY=\" + JSON.stringify($('Prepare Artifact').item.json.object_key) + \" OUTPUT_PATH=\" + JSON.stringify($('Prepare Artifact').item.json.output_path) + \" WEBHOOK_PATH=\" + JSON.stringify('prototype-media-artifact') + \" node - <<'NODE'\\nconst crypto = require('crypto');\\nconst fs = require('fs');\\n\\nconst brokerBaseUrl = 'http://broker:8090';\\nconst env = process.env;\\nconst uri = 's3://' + env.BUCKET_NAME + '/' + env.OBJECT_KEY;\\nconst mimeType = env.OBJECT_KEY.endsWith('.mp4') ? 'video/mp4' : 'application/octet-stream';\\nconst checksumSha256 = crypto.createHash('sha256').update(fs.readFileSync(env.OUTPUT_PATH)).digest('hex');\\nconst workflowEventHash = crypto.createHash('sha256').update(env.WORKFLOW_EVENT_ID + ':' + env.RUN_ID + ':' + uri).digest('hex');\\nconst artifactEventHash = crypto.createHash('sha256').update(env.ARTIFACT_EVENT_ID + ':' + env.RUN_ID + ':' + uri).digest('hex');\\n\\nasync function post(path, payload) {\\n  const response = await fetch(brokerBaseUrl + path, {\\n    method: 'POST',\\n    headers: { 'content-type': 'application/json' },\\n    body: JSON.stringify(payload),\\n  });\\n  const body = await response.text();\\n  if (!response.ok) {\\n    throw new Error(path + ' ' + response.status + ' ' + body);\\n  }\\n  return body ? JSON.parse(body) : {};\\n}\\n\\nasync function main() {\\n  await post('/nodes', {\\n    node_id: env.NODE_ID,\\n    node_role: env.NODE_ROLE,\\n    display_name: env.DISPLAY_NAME,\\n    metadata_json: { source: 'n8n.workflow', webhook_path: env.WEBHOOK_PATH },\\n  });\\n  await post('/sessions', {\\n    session_id: env.SESSION_ID,\\n    node_id: env.NODE_ID,\\n    surface: env.SURFACE,\\n    metadata_json: { source: 'n8n.workflow', user_id: env.USER_ID || null, message_id: env.MESSAGE_ID || null, webhook_path: env.WEBHOOK_PATH },\\n  });\\n  await post('/runs', {\\n    run_id: env.RUN_ID,\\n    session_id: env.SESSION_ID,\\n    run_kind: 'n8n.prototype.media.artifact',\\n    status: 'started',\\n    metadata_json: { source: 'n8n.workflow', user_id: env.USER_ID || null, webhook_path: env.WEBHOOK_PATH },\\n  });\\n\\n  await post('/events', {\\n    event_id: env.WORKFLOW_EVENT_ID,\\n    event_type: 'workflow.completed',\\n    payload_version: 1,\\n    node_id: env.NODE_ID,\\n    session_id: env.SESSION_ID,\\n    run_id: env.RUN_ID,\\n    idempotency_key: env.NODE_ID + ':' + env.WORKFLOW_EVENT_ID,\\n    occurred_at: env.OCCURRED_AT,\\n    payload_json: { prompt: env.PROMPT, bucket: env.BUCKET_NAME, object_key: env.OBJECT_KEY, uri: uri, mime_type: mimeType, checksum_sha256: checksumSha256 },\\n    metadata_json: { source: 'n8n.workflow', webhook_path: env.WEBHOOK_PATH, user_id: env.USER_ID || null },\\n  });\\n\\n  await post('/events', {\\n    event_id: env.ARTIFACT_EVENT_ID,\\n    event_type: 'artifact.registered',\\n    payload_version: 1,\\n    node_id: env.NODE_ID,\\n    session_id: env.SESSION_ID,\\n    run_id: env.RUN_ID,\\n    idempotency_key: env.NODE_ID + ':' + env.ARTIFACT_EVENT_ID,\\n    source_event_id: env.WORKFLOW_EVENT_ID,\\n    source_event_hash: workflowEventHash,\\n    occurred_at: env.OCCURRED_AT,\\n    payload_json: { artifact_id: env.ARTIFACT_ID, artifact_kind: 'blob', storage_backend: 's3', bucket: env.BUCKET_NAME, object_key: env.OBJECT_KEY, uri: uri, mime_type: mimeType, checksum_sha256: checksumSha256 },\\n    metadata_json: { source: 'n8n.workflow', webhook_path: env.WEBHOOK_PATH, user_id: env.USER_ID || null },\\n  });\\n\\n  await post('/artifacts', {\\n    artifact_id: env.ARTIFACT_ID,\\n    artifact_kind: 'blob',\\n    source_event_id: env.ARTIFACT_EVENT_ID,\\n    source_event_hash: artifactEventHash,\\n    storage_backend: 's3',\\n    uri: uri,\\n    mime_type: mimeType,\\n    checksum_sha256: checksumSha256,\\n    metadata_json: { bucket: env.BUCKET_NAME, object_key: env.OBJECT_KEY, prompt: env.PROMPT, run_id: env.RUN_ID, session_id: env.SESSION_ID, webhook_path: env.WEBHOOK_PATH, user_id: env.USER_ID || null },\\n  });\\n\\n  await post('/runs', {\\n    run_id: env.RUN_ID,\\n    session_id: env.SESSION_ID,\\n    run_kind: 'n8n.prototype.media.artifact',\\n    status: 'completed',\\n    metadata_json: { source: 'n8n.workflow', user_id: env.USER_ID || null, webhook_path: env.WEBHOOK_PATH, artifact_id: env.ARTIFACT_ID, uri: uri, mime_type: mimeType, checksum_sha256: checksumSha256 },\\n  });\\n\\n  console.log(JSON.stringify({ sessionId: env.SESSION_ID, runId: env.RUN_ID, workflowEventId: env.WORKFLOW_EVENT_ID, artifactEventId: env.ARTIFACT_EVENT_ID, artifactId: env.ARTIFACT_ID, checksumSha256: checksumSha256, mimeType: mimeType, uri: uri }));\\n}\\n\\nmain().catch(async (error) => {\\n  try {\\n    await post('/events', {\\n      event_id: env.FAILED_EVENT_ID,\\n      event_type: 'workflow.failed',\\n      payload_version: 1,\\n      node_id: env.NODE_ID,\\n      session_id: env.SESSION_ID,\\n      run_id: env.RUN_ID,\\n      idempotency_key: env.NODE_ID + ':' + env.FAILED_EVENT_ID,\\n      occurred_at: env.OCCURRED_AT,\\n      payload_json: { prompt: env.PROMPT, bucket: env.BUCKET_NAME, object_key: env.OBJECT_KEY, error: error.message },\\n      metadata_json: { source: 'n8n.workflow', webhook_path: env.WEBHOOK_PATH, user_id: env.USER_ID || null },\\n    });\\n    await post('/runs', {\\n      run_id: env.RUN_ID,\\n      session_id: env.SESSION_ID,\\n      run_kind: 'n8n.prototype.media.artifact',\\n      status: 'failed',\\n      metadata_json: { source: 'n8n.workflow', webhook_path: env.WEBHOOK_PATH, user_id: env.USER_ID || null, error: error.message },\\n    });\\n  } catch (_) {}\\n  console.error(error.message);\\n  process.exit(1);\\n});\\nNODE\" }}"
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000318",
+      "name": "Register Broker Lineage",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const state = $('Prepare Artifact').first().json;\nconst stdout = String($input.first().json.stdout || '').trim();\nif (!stdout) {\n  throw new Error('Broker lineage command did not return metadata');\n}\nlet lineage;\ntry {\n  lineage = JSON.parse(stdout);\n} catch (error) {\n  throw new Error(`Invalid broker lineage metadata: ${stdout}`);\n}\nreturn [{ json: { ...state, sessionId: lineage.sessionId, runId: lineage.runId, eventId: lineage.workflowEventId, artifactEventId: lineage.artifactEventId, artifactId: lineage.artifactId, checksumSha256: lineage.checksumSha256, mimeType: lineage.mimeType, uri: lineage.uri } }];"
+      },
+      "id": "5e3dfd78-5d5e-4c3f-9ca7-1215aa000319",
+      "name": "Parse Broker Lineage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1800,
+        120
+      ]
+    },
+    {
+      "parameters": {
         "assignments": {
           "assignments": [
             {
@@ -131,6 +159,54 @@
               "name": "localPath",
               "type": "string",
               "value": "={{ $('Prepare Artifact').item.json.output_path }}"
+            },
+            {
+              "id": "sessionId",
+              "name": "sessionId",
+              "type": "string",
+              "value": "={{ $('Parse Broker Lineage').item.json.sessionId }}"
+            },
+            {
+              "id": "runId",
+              "name": "runId",
+              "type": "string",
+              "value": "={{ $('Parse Broker Lineage').item.json.runId }}"
+            },
+            {
+              "id": "eventId",
+              "name": "eventId",
+              "type": "string",
+              "value": "={{ $('Parse Broker Lineage').item.json.eventId }}"
+            },
+            {
+              "id": "artifactEventId",
+              "name": "artifactEventId",
+              "type": "string",
+              "value": "={{ $('Parse Broker Lineage').item.json.artifactEventId }}"
+            },
+            {
+              "id": "artifactId",
+              "name": "artifactId",
+              "type": "string",
+              "value": "={{ $('Parse Broker Lineage').item.json.artifactId }}"
+            },
+            {
+              "id": "checksumSha256",
+              "name": "checksumSha256",
+              "type": "string",
+              "value": "={{ $('Parse Broker Lineage').item.json.checksumSha256 }}"
+            },
+            {
+              "id": "mimeType",
+              "name": "mimeType",
+              "type": "string",
+              "value": "={{ $('Parse Broker Lineage').item.json.mimeType }}"
+            },
+            {
+              "id": "uri",
+              "name": "uri",
+              "type": "string",
+              "value": "={{ $('Parse Broker Lineage').item.json.uri }}"
             }
           ]
         },
@@ -205,6 +281,28 @@
       ]
     },
     "Upload To MinIO": {
+      "main": [
+        [
+          {
+            "node": "Register Broker Lineage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Register Broker Lineage": {
+      "main": [
+        [
+          {
+            "node": "Parse Broker Lineage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Broker Lineage": {
       "main": [
         [
           {

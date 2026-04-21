@@ -135,6 +135,18 @@ class EventCreate(BaseModel):
     metadata_json: dict[str, Any] = Field(default_factory=dict)
 
 
+class ArtifactCreate(BaseModel):
+    artifact_id: str = Field(min_length=1)
+    artifact_kind: str = Field(min_length=1)
+    source_event_id: str = Field(min_length=1)
+    source_event_hash: str = Field(min_length=1)
+    storage_backend: str = Field(min_length=1)
+    uri: str = Field(min_length=1)
+    mime_type: str | None = None
+    checksum_sha256: str | None = None
+    metadata_json: dict[str, Any] = Field(default_factory=dict)
+
+
 app = FastAPI(title="1215 Broker API", version="0.1.0")
 
 
@@ -302,6 +314,98 @@ def list_events(limit: int = Query(default=50, ge=1, le=500)) -> dict[str, Any]:
         )
         rows = cursor.fetchall()
     return {"events": rows, "count": len(rows)}
+
+
+@app.post("/artifacts")
+def create_artifact(artifact: ArtifactCreate) -> dict[str, Any]:
+    with db_cursor() as cursor:
+        cursor.execute(
+            """
+            WITH inserted AS (
+                INSERT INTO broker.artifacts (
+                    artifact_id,
+                    artifact_kind,
+                    source_event_id,
+                    source_event_hash,
+                    storage_backend,
+                    uri,
+                    mime_type,
+                    checksum_sha256,
+                    metadata_json
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (storage_backend, uri) DO UPDATE SET
+                    artifact_kind = EXCLUDED.artifact_kind,
+                    source_event_id = EXCLUDED.source_event_id,
+                    source_event_hash = EXCLUDED.source_event_hash,
+                    mime_type = EXCLUDED.mime_type,
+                    checksum_sha256 = EXCLUDED.checksum_sha256,
+                    metadata_json = EXCLUDED.metadata_json
+                RETURNING artifact_id, artifact_kind, source_event_id, source_event_hash,
+                          storage_backend, uri, mime_type, checksum_sha256, metadata_json, created_at
+            )
+            SELECT * FROM inserted
+            UNION ALL
+            SELECT artifact_id, artifact_kind, source_event_id, source_event_hash,
+                   storage_backend, uri, mime_type, checksum_sha256, metadata_json, created_at
+            FROM broker.artifacts
+            WHERE storage_backend = %s AND uri = %s
+            LIMIT 1
+            """,
+            (
+                artifact.artifact_id,
+                artifact.artifact_kind,
+                artifact.source_event_id,
+                artifact.source_event_hash,
+                artifact.storage_backend,
+                artifact.uri,
+                artifact.mime_type,
+                artifact.checksum_sha256,
+                psycopg.types.json.Jsonb(artifact.metadata_json),
+                artifact.storage_backend,
+                artifact.uri,
+            ),
+        )
+        row = cursor.fetchone()
+
+    if row is None:
+        raise HTTPException(status_code=500, detail="artifact insert failed")
+
+    return {"artifact": row}
+
+
+@app.get("/artifacts")
+def list_artifacts(
+    source_event_id: str | None = None,
+    limit: int = Query(default=50, ge=1, le=500),
+) -> dict[str, Any]:
+    with db_cursor() as cursor:
+        if source_event_id:
+            cursor.execute(
+                """
+                SELECT artifact_id, artifact_kind, source_event_id, source_event_hash,
+                       storage_backend, uri, mime_type, checksum_sha256, metadata_json, created_at
+                FROM broker.artifacts
+                WHERE source_event_id = %s
+                ORDER BY created_at DESC
+                LIMIT %s
+                """,
+                (source_event_id, limit),
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT artifact_id, artifact_kind, source_event_id, source_event_hash,
+                       storage_backend, uri, mime_type, checksum_sha256, metadata_json, created_at
+                FROM broker.artifacts
+                ORDER BY created_at DESC
+                LIMIT %s
+                """,
+                (limit,),
+            )
+        rows = cursor.fetchall()
+
+    return {"artifacts": rows, "count": len(rows)}
 
 
 @app.get("/config")
