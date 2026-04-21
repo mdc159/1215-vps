@@ -8,6 +8,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      broker-bootstrap:
+        condition: service_completed_successfully
     environment:
       BROKER_DATABASE_HOST: postgres
       BROKER_DATABASE_PORT: 5432
@@ -17,6 +19,34 @@ services:
       BROKER_SERVICE_NAME: prototype-broker
     ports:
       - "127.0.0.1:8090:8090"
+
+  broker-bootstrap:
+    # pgvector/pgvector:pg17 (same image as postgres so psql client matches)
+    # Applies stack/sql/broker/*.sql (idempotent: schema uses IF NOT EXISTS and
+    # ON CONFLICT DO NOTHING). Added in Phase D — the broker never self-migrated
+    # and Phase D's acceptance needs broker.events to exist for run.created/
+    # /completed publication.
+    image: pgvector/pgvector@sha256:494dff7e67e7bc2c826b94c331364978d145ebb86fd338154138b084223b7f67
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgres-bootstrap:
+        condition: service_completed_successfully
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-prototype-postgres}
+    volumes:
+      - ../sql/broker:/sql/broker:ro
+    entrypoint: /bin/sh
+    command:
+      - -ec
+      - >
+        until pg_isready -h postgres -U postgres; do sleep 1; done
+        &&
+        for f in /sql/broker/*.sql; do
+          echo "applying $$f";
+          psql -h postgres -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$$f";
+        done
 
   postgres:
     # pgvector/pgvector:pg17 (drop-in Postgres 17 + pgvector; swapped in Phase B to support host-native Honcho)
