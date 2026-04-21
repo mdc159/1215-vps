@@ -80,8 +80,22 @@ of the following are true:
 
 ## Bring-up
 
+Initialize a local env file first:
+
 ```bash
-docker compose -f stack/prototype-local/docker-compose.substrate.yml up -d
+python3 stack/prototype-local/scripts/init_env.py
+```
+
+This renders `stack/prototype-local/.env` with fresh local-only secrets, leaves
+user-supplied upstream keys blank, and keeps the committed
+[stack/prototype-local/.env.example](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/.env.example)
+as the repo contract.
+
+Then bring the stack up:
+
+```bash
+docker compose --env-file stack/prototype-local/.env \
+  -f stack/prototype-local/docker-compose.substrate.yml up -d
 docker compose -f stack/prototype-local/docker-compose.substrate.yml ps
 ./bin/start-1215.py broker-files
 ./bin/start-1215.py broker-apply --target prototype-local
@@ -165,6 +179,9 @@ Current local assumptions:
 - it reaches local `n8n` over the Docker network at `http://n8n:5678`
 - it uses `N8N_API_KEY` from `stack/prototype-local/.env` for management tools
 - it uses `N8N_MCP_AUTH_TOKEN` for HTTP-mode auth
+- `stack/prototype-local/scripts/init_env.py` intentionally leaves
+  `N8N_API_KEY` blank so a fresh local API key can be created in `n8n` and
+  pasted into the ignored `.env`
 - MCP clients still need to connect to it explicitly; starting the server does
   not hot-register tools into an already-running Codex session
 
