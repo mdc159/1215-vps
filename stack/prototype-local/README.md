@@ -16,14 +16,33 @@ for the repo-level rule: shared contracts live once, capabilities are enabled
 by role overlays, and each future node should select roles through a small local
 manifest under `nodes/`.
 
-The first executable seam for that model now lives in `start-1215`:
+The first executable seam for that model now lives in `bin/1215` (alias
+`start-1215`):
 
 ```bash
-./bin/start-1215 nodes
-./bin/start-1215 show-node vps
-./bin/start-1215 compose-cmd vps config
-./bin/start-1215 compose vps up -d
+./bin/1215 nodes
+./bin/1215 show-node linux-prototype
+./bin/1215 compose-cmd linux-prototype config
+./bin/1215 compose linux-prototype up -d
 ```
+
+For day-to-day lifecycle, `bin/1215` also exposes unified bringup/teardown
+commands that own both the docker compose substrate and the host-native
+`systemd --user` units (honcho, honcho-deriver, hermes-gateway) — the Phase
+H "one entrypoint to rule them all" surface:
+
+```bash
+./bin/1215 up       # seed .env, compose up -d --wait, enable host units
+./bin/1215 status   # per-service STATE / HEALTH / PORT / HINT table
+./bin/1215 smoke    # exposure + canary + gate_shared_core invariants
+./bin/1215 logs <service>
+./bin/1215 down     # stop host units, compose down (preserves volumes)
+```
+
+The thin wrappers `stack/prototype-local/scripts/launch.sh` and
+`stack/prototype-local/scripts/shutdown.sh` exist as the documented entry
+points for fresh clones; both delegate to `./bin/1215 up` / `./bin/1215
+down`.
 
 Today the example node manifests all resolve through the `prototype-local`
 target because this is still the first full runnable substrate. The important

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Repo-root shim into the control-1215 CLI.
+#
+# Usage: ./bin/1215 <subcommand> [args...]
+#
+# Subcommands (see `./bin/1215 --help` for the full list):
+#   up        — cold bringup of the target (compose + host units)
+#   down      — inverse of `up`, preserves volumes
+#   status    — one-row-per-service table; non-zero exit on drift
+#   logs      — compose logs OR `journalctl --user` based on service
+#   smoke     — exposure + canary + gate_shared_core checks
+#   doctor    — prerequisite / layout check
+#   targets   — list architecture targets
+#   services  — list services for one target
+#   compose   — raw docker-compose passthrough for a node manifest
+#
+# All subcommands are idempotent. Re-running `up` after `up` is a
+# no-op; `down` on a clean system exits 0.
+
+set -Eeuo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "${script_dir}/.." && pwd)"
+
+exec uv run --project "${repo_root}/stack/control" --quiet start-1215 "$@"

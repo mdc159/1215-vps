@@ -14,14 +14,13 @@ def test_docs_command_lists_architecture_pack(capsys) -> None:
     assert cli.main(["docs"]) == 0
     out = capsys.readouterr().out
     assert "docs/architecture/overview.md" in out
-    assert "docs/architecture/inter-node-data-flow.md" in out
+    assert "docs/architecture/execution-plan.md" in out
 
 
 def test_nodes_command_lists_manifest_examples(capsys) -> None:
     assert cli.main(["nodes"]) == 0
     out = capsys.readouterr().out
-    assert "vps: target=prototype-local" in out
-    assert "engineering-pc: target=prototype-local" in out
+    assert "linux-prototype: target=prototype-local" in out
 
 
 def test_services_command_for_prototype_target(capsys) -> None:
@@ -41,9 +40,9 @@ def test_show_target_command(capsys) -> None:
 
 
 def test_show_node_command(capsys) -> None:
-    assert cli.main(["show-node", "vps"]) == 0
+    assert cli.main(["show-node", "linux-prototype"]) == 0
     out = capsys.readouterr().out
-    assert '"name": "vps"' in out
+    assert '"name": "linux-prototype"' in out
     assert '"target": "prototype-local"' in out
     assert '"compose_profiles": [' in out
     assert '"role_compose_files": [' in out
@@ -54,7 +53,7 @@ def test_show_node_command(capsys) -> None:
 
 
 def test_compose_cmd_for_node_includes_env_file_and_profiles(capsys) -> None:
-    assert cli.main(["compose-cmd", "vps", "config"]) == 0
+    assert cli.main(["compose-cmd", "linux-prototype", "config"]) == 0
     out = capsys.readouterr().out
     assert "--env-file" in out
     assert "stack/prototype-local/.env" in out

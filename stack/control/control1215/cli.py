@@ -8,6 +8,7 @@ import sys
 
 from .broker import apply_broker_sql, broker_sql_files, render_broker_sql
 from .compose import docker_compose_args, target_compose_files, target_env_file
+from . import lifecycle
 from .nodes import (
     list_node_names,
     load_node_manifest,
@@ -74,6 +75,50 @@ def build_parser() -> argparse.ArgumentParser:
         "compose_args",
         nargs=argparse.REMAINDER,
         help="Arguments passed through to docker compose.",
+    )
+
+    # -- Phase H lifecycle commands ----------------------------------
+    up_cmd = subparsers.add_parser(
+        "up",
+        help="Idempotent bringup: compose up -d --wait, then start user units.",
+    )
+    up_cmd.add_argument("--target", default="prototype-local")
+
+    down_cmd = subparsers.add_parser(
+        "down",
+        help="Stop user units then `docker compose down`. Preserves volumes.",
+    )
+    down_cmd.add_argument("--target", default="prototype-local")
+    down_cmd.add_argument(
+        "--volumes",
+        action="store_true",
+        help="Also remove docker volumes. Destructive; off by default.",
+    )
+
+    status_cmd = subparsers.add_parser(
+        "status",
+        help="Per-service state / health / port / hint. Non-zero exit on drift.",
+    )
+    status_cmd.add_argument("--target", default="prototype-local")
+    status_cmd.add_argument("--json", action="store_true", dest="as_json")
+
+    logs_cmd = subparsers.add_parser(
+        "logs",
+        help="Tail compose or journalctl logs for one service.",
+    )
+    logs_cmd.add_argument("service")
+    logs_cmd.add_argument("--follow", "-f", action="store_true")
+    logs_cmd.add_argument("--target", default="prototype-local")
+
+    smoke_cmd = subparsers.add_parser(
+        "smoke",
+        help="Run exposure + canary + gate_shared_core checks. Non-zero on any fail.",
+    )
+    smoke_cmd.add_argument("--json", action="store_true", dest="as_json")
+    smoke_cmd.add_argument(
+        "--skip-gate",
+        action="store_true",
+        help="Skip gate_shared_core.py (still runs exposure + canary).",
     )
 
     return parser
@@ -288,6 +333,16 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_compose_cmd(args.node, args.compose_args)
     if args.command == "compose":
         return cmd_compose(args.node, args.compose_args)
+    if args.command == "up":
+        return lifecycle.do_up(args.target)
+    if args.command == "down":
+        return lifecycle.do_down(args.target, remove_volumes=args.volumes)
+    if args.command == "status":
+        return lifecycle.do_status(args.target, as_json=args.as_json)
+    if args.command == "logs":
+        return lifecycle.do_logs(args.service, follow=args.follow, target=args.target)
+    if args.command == "smoke":
+        return lifecycle.do_smoke(as_json=args.as_json, skip_gate=args.skip_gate)
 
     parser.error(f"unknown command: {args.command}")
     return 2
