@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
-"""Bring up Hermes + Paperclip on a local 1215 node.
+"""Configure host-side Hermes against the host-native Honcho.
 
-As of Phase B, Honcho is no longer launched from here — it runs as a
-systemd --user service (see stack/services/honcho/) against the shared
-substrate Postgres. This script now only:
+As of Phase B, Honcho runs as a systemd --user service (see
+stack/services/honcho/) against the shared substrate Postgres. As of
+Phase E, Paperclip runs as a regular compose service (see the
+``paperclip`` entry in docker-compose.substrate.yml and the
+bootstrap_paperclip_ceo.py script); this script no longer launches
+Paperclip at all. It now only:
 
   - confirms Honcho is already healthy at http://127.0.0.1:18000/health
     (fail fast with a pointer to the install.sh otherwise),
   - configures Hermes on the host to use Honcho as its memory provider,
-  - brings up the legacy host-docker Paperclip quickstart (Phase E will
-    move Paperclip into the main compose file),
   - runs the Hermes ↔ Honcho memory write/read smoke test.
 
 The separate 1215-honcho-pg Postgres container created by earlier
 versions of this script has been retired; if it is still running on
 this host, remove it manually (`docker rm -f 1215-honcho-pg`).
+Similarly, the host-side Paperclip quickstart container it used to
+launch is superseded by the compose service — stop it with
+`docker compose -f modules/paperclip/docker/docker-compose.quickstart.yml down`
+if it's still running.
 """
 
 from __future__ import annotations
@@ -31,10 +36,8 @@ from urllib import request
 REPO_ROOT = Path(__file__).resolve().parents[3]
 LOCAL_ENV_PATH = REPO_ROOT / "stack" / "prototype-local" / ".env"
 HERMES_DIR = REPO_ROOT / "modules" / "hermes-agent"
-PAPERCLIP_DOCKER_DIR = REPO_ROOT / "modules" / "paperclip" / "docker"
 
 HONCHO_HEALTH_URL = "http://127.0.0.1:18000/health"
-PAPERCLIP_HEALTH_URL = "http://127.0.0.1:3100/api/health"
 
 
 def parse_env(path: Path) -> dict[str, str]:
@@ -138,30 +141,6 @@ def configure_hermes(openrouter_api_key: str, model: str) -> dict[str, object]:
     return {"memory_status": status, "openrouter_key_present": bool(openrouter_api_key)}
 
 
-def start_paperclip(openrouter_api_key: str, data_dir: Path, auth_secret: str) -> dict[str, object]:
-    data_dir.mkdir(parents=True, exist_ok=True)
-    os.chmod(data_dir, 0o777)
-
-    env = os.environ.copy()
-    env.update(
-        {
-            "OPENAI_API_KEY": openrouter_api_key,
-            "BETTER_AUTH_SECRET": auth_secret,
-            "PAPERCLIP_DATA_DIR": str(data_dir),
-        }
-    )
-
-    run(
-        ["docker", "compose", "-f", "docker-compose.quickstart.yml", "down"],
-        cwd=PAPERCLIP_DOCKER_DIR,
-        env=env,
-        check=False,
-    )
-    run(["docker", "compose", "-f", "docker-compose.quickstart.yml", "up", "-d"], cwd=PAPERCLIP_DOCKER_DIR, env=env)
-    health = wait_http(PAPERCLIP_HEALTH_URL, timeout=180)
-    return {"health": health}
-
-
 def run_memory_smoke(openrouter_api_key: str, token: str) -> dict[str, object]:
     env = os.environ.copy()
     env.update(
@@ -219,8 +198,6 @@ def run_memory_smoke(openrouter_api_key: str, token: str) -> dict[str, object]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", default="openai/gpt-4o-mini", help="Hermes model ID (OpenRouter format).")
-    parser.add_argument("--paperclip-data-dir", default="/tmp/paperclip-data-1215", help="Writable host directory for Paperclip data volume.")
-    parser.add_argument("--paperclip-auth-secret", default="paperclip-local-secret-1215", help="BETTER_AUTH_SECRET value for local Paperclip.")
     parser.add_argument("--smoke-token", default="HERMES_PROOF_18000", help="Token used by the Hermes/Honcho smoke memory test.")
     parser.add_argument("--skip-smoke-test", action="store_true", help="Skip Hermes/Honcho write-read smoke test.")
     args = parser.parse_args()
@@ -234,7 +211,6 @@ def main() -> int:
 
     honcho_info = {"health": wait_for_honcho()}
     hermes_info = configure_hermes(openrouter_api_key, args.model)
-    paperclip_info = start_paperclip(openrouter_api_key, Path(args.paperclip_data_dir), args.paperclip_auth_secret)
 
     smoke_info: dict[str, object] | None = None
     if not args.skip_smoke_test:
@@ -242,13 +218,20 @@ def main() -> int:
 
     summary = {
         "honcho": honcho_info,
-        "paperclip": paperclip_info,
+        "hermes": hermes_info,
         "hermes_model": args.model,
         "hermes_memory_provider": "honcho",
         "smoke_test": smoke_info,
         "endpoints": {
             "honcho_health": HONCHO_HEALTH_URL,
-            "paperclip_health": PAPERCLIP_HEALTH_URL,
+        },
+        "paperclip": {
+            "note": (
+                "Paperclip is now a compose service. Bring it up with "
+                "`docker compose -f stack/prototype-local/docker-compose.substrate.yml up -d paperclip` "
+                "and bootstrap the CEO company via "
+                "`uv run python stack/prototype-local/scripts/bootstrap_paperclip_ceo.py`."
+            ),
         },
     }
     print(json.dumps(summary, indent=2))

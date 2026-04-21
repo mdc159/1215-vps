@@ -20,7 +20,8 @@
         "n8n",
         "n8n-mcp",
         "langfuse",
-        "comfyui"
+        "comfyui",
+        "paperclip"
       ]
     },
     "vps-hub": {

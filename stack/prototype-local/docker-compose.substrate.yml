@@ -350,6 +350,83 @@ services:
       - prototype_n8n_data:/home/node/.n8n
       - prototype_shared_data:/data/shared
 
+  paperclip:
+    # Paperclip orchestration workbench.
+    #
+    # Build context is the modules/paperclip submodule; USER_UID/USER_GID
+    # are baked in at build time so the in-container `node` user matches
+    # the host user (1000) and can read the gateway UDS. Runtime
+    # overrides are also honoured by scripts/docker-entrypoint.sh.
+    #
+    # ---- Network deviation from roadmap.md Phase E ----
+    # The Phase E roadmap language says "Port: 127.0.0.1:3100 -> 3100"
+    # (a bridge-network port publish). We instead put Paperclip on the
+    # HOST network for the prototype because:
+    #   * Paperclip only supports two deployment modes,
+    #     ``local_trusted`` and ``authenticated``. The single-operator
+    #     prototype explicitly wants ``local_trusted`` (no invite flow,
+    #     matches the "single specialist surface" seam in
+    #     docs/architecture/north-star.md).
+    #   * ``local_trusted`` enforces ``server.bind=loopback`` (see
+    #     modules/paperclip/server/src/config.ts ``validateConfiguredBindMode``),
+    #     which means the app binds to 127.0.0.1 inside its own netns.
+    #     On a bridge network that address is unreachable from the host,
+    #     so Docker port publishing doesn't work.
+    #   * Host networking makes "bind 127.0.0.1" mean "bind 127.0.0.1 on
+    #     the host", which is exactly what the acceptance check asks for.
+    #   * All Paperclip's outbound callers are already loopback-only:
+    #     - broker  -> http://127.0.0.1:8090 (published by the broker
+    #       service)
+    #     - gateway -> /run/user/1000/hermes-gateway/gateway.sock
+    #       (bind-mounted)
+    #   So host networking does not expand the network surface.
+    # When promoting this node beyond single-operator we flip back to a
+    # bridged network + ``authenticated`` deployment mode.
+    build:
+      context: ../../modules/paperclip
+      args:
+        USER_UID: ${PAPERCLIP_USER_UID:-1000}
+        USER_GID: ${PAPERCLIP_USER_GID:-1000}
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      broker:
+        condition: service_started
+    environment:
+      # Paperclip server config.
+      # HOST is explicit: Paperclip's Dockerfile defaults it to 0.0.0.0
+      # which ``local_trusted`` mode rejects; we pin to loopback.
+      HOST: 127.0.0.1
+      PORT: 3100
+      PAPERCLIP_INSTANCE_ID: ${PAPERCLIP_INSTANCE_ID:-default}
+      PAPERCLIP_DEPLOYMENT_MODE: ${PAPERCLIP_DEPLOYMENT_MODE:-local_trusted}
+      PAPERCLIP_DEPLOYMENT_EXPOSURE: ${PAPERCLIP_DEPLOYMENT_EXPOSURE:-private}
+      BETTER_AUTH_SECRET: ${PAPERCLIP_AUTH_SECRET:-paperclip-local-secret-1215}
+      # Paperclip uses OPENAI_API_KEY in its generic LLM path; prototype
+      # wires it to the OpenRouter-compatible key already in .env so the
+      # Hermes adapter and Paperclip's built-in adapters share creds.
+      OPENAI_API_KEY: ${OPENROUTER_API_KEY:-}
+      # Phase E contract: Paperclip reaches Hermes ONLY via the gateway
+      # UDS and the broker via loopback. Both are wired here; it is up
+      # to the Paperclip adapter layer (modules/paperclip/packages/adapters)
+      # to pick them up. These env vars are the public contract.
+      PAPERCLIP_HERMES_GATEWAY_SOCKET: /run/hermes-gateway/gateway.sock
+      PAPERCLIP_BROKER_URL: http://127.0.0.1:8090
+    volumes:
+      # Host-side gateway runtime dir bind-mounted RW so the in-container
+      # Paperclip can connect to the socket. The gateway socket itself is
+      # mode 0664 and the paperclip container runs as the same UID, so
+      # this grants connect-only access. Override HERMES_GATEWAY_SOCKET_DIR
+      # if running on a non-standard XDG_RUNTIME_DIR layout.
+      - "${HERMES_GATEWAY_SOCKET_DIR:-/run/user/1000/hermes-gateway}:/run/hermes-gateway:rw"
+      - prototype_paperclip_data:/paperclip
+    healthcheck:
+      test: ["CMD", "sh", "-c", "wget --no-verbose --tries=1 --spider http://127.0.0.1:3100/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 60s
+
   n8n-mcp:
     # ghcr.io/czlonkowski/n8n-mcp:2.33.5
     image: ghcr.io/czlonkowski/n8n-mcp@sha256:b8c0ef8f68cca13375490033d68ca5b8c6e2a82266879ff38f8fca50f0b70151
@@ -397,4 +474,5 @@ volumes:
   prototype_comfyui_output:
   prototype_n8n_data:
   prototype_n8n_mcp_data:
+  prototype_paperclip_data:
   prototype_shared_data:
