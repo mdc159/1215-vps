@@ -86,8 +86,10 @@ Initialize a local env file first:
 python3 stack/prototype-local/scripts/init_env.py
 ```
 
-This renders `stack/prototype-local/.env` with fresh local-only secrets, leaves
-user-supplied upstream keys blank, and keeps the committed
+This renders `stack/prototype-local/.env` with local-only secrets, composes
+`HONCHO_DB_CONNECTION_URI` from `HONCHO_DB_PASSWORD`, leaves provider/API keys
+blank for explicit operator input, preserves existing secret values on
+re-renders so mounted runtime state does not drift, and keeps the committed
 [stack/prototype-local/.env.example](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/.env.example)
 as the repo contract.
 
@@ -109,13 +111,30 @@ After the containers are up, run the repo-owned runtime bootstrap:
 ```bash
 python3 stack/prototype-local/scripts/bootstrap_n8n.py
 python3 stack/prototype-local/scripts/sync_openwebui_functions.py
+python3 stack/prototype-local/scripts/test_openwebui_n8n_broker.py
 ```
+
+To bring up the next-stage local stack pieces (self-hosted Honcho, Hermes
+memory provider wiring, and Paperclip quickstart) in one pass:
+
+```bash
+python3 stack/prototype-local/scripts/setup_hermes_honcho_paperclip.py
+```
+
+This script:
+
+- starts a dedicated local `pgvector` Postgres for Honcho (`1215-honcho-pg`)
+- runs Honcho migrations and starts Honcho API/deriver on `127.0.0.1:18000`
+- configures Hermes to use Honcho memory and a selectable model
+- starts Paperclip quickstart on `127.0.0.1:3100` with a writable local data dir
+- runs an optional Hermes↔Honcho cross-session memory smoke test
 
 These scripts make the runtime deterministic on fresh volumes:
 
 - ensure the local `n8n` owner/project state exists
 - import the repo-owned `n8n` credentials and workflow JSON
 - activate the expected webhook workflows
+- ensure the local `langfuse` database exists before Langfuse services start
 - ensure the local Open WebUI admin credentials are set from the ignored `.env`
 - upsert the repo-owned Open WebUI function models and verify they appear in
   `/api/models`
@@ -138,6 +157,7 @@ Repo-owned workflow and function artifacts:
 
 - Open WebUI pipe: [stack/prototype-local/open-webui/functions/prototype_n8n_pipe.py](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/open-webui/functions/prototype_n8n_pipe.py)
 - Open WebUI ComfyUI pipe: [stack/prototype-local/open-webui/functions/prototype_comfyui_pipe.py](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/open-webui/functions/prototype_comfyui_pipe.py)
+- Open WebUI -> `n8n` -> broker smoke test: [stack/prototype-local/scripts/test_openwebui_n8n_broker.py](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/scripts/test_openwebui_n8n_broker.py)
 - n8n manual smoke workflow: [stack/prototype-local/n8n/Get_Prototype_Postgres_Tables.json](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/n8n/Get_Prototype_Postgres_Tables.json)
 - n8n webhook smoke workflow: [stack/prototype-local/n8n/Get_Prototype_Postgres_Tables_Webhook.json](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/n8n/Get_Prototype_Postgres_Tables_Webhook.json)
 - n8n MinIO webhook smoke workflow: [stack/prototype-local/n8n/List_Prototype_Minio_Buckets_Webhook.json](/mnt/data/Documents/repos/1215-vps/stack/prototype-local/n8n/List_Prototype_Minio_Buckets_Webhook.json)
