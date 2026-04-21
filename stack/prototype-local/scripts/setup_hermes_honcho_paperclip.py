@@ -1,30 +1,37 @@
 #!/usr/bin/env python3
-"""Bring up Hermes + self-hosted Honcho + Paperclip on a local 1215 node."""
+"""Bring up Hermes + Paperclip on a local 1215 node.
+
+As of Phase B, Honcho is no longer launched from here — it runs as a
+systemd --user service (see stack/services/honcho/) against the shared
+substrate Postgres. This script now only:
+
+  - confirms Honcho is already healthy at http://127.0.0.1:18000/health
+    (fail fast with a pointer to the install.sh otherwise),
+  - configures Hermes on the host to use Honcho as its memory provider,
+  - brings up the legacy host-docker Paperclip quickstart (Phase E will
+    move Paperclip into the main compose file),
+  - runs the Hermes ↔ Honcho memory write/read smoke test.
+
+The separate 1215-honcho-pg Postgres container created by earlier
+versions of this script has been retired; if it is still running on
+this host, remove it manually (`docker rm -f 1215-honcho-pg`).
+"""
 
 from __future__ import annotations
 
 import argparse
 import json
 import os
-import signal
 import subprocess
 import time
 from pathlib import Path
-from urllib import error, request
+from urllib import request
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 LOCAL_ENV_PATH = REPO_ROOT / "stack" / "prototype-local" / ".env"
-HONCHO_DIR = REPO_ROOT / "modules" / "honcho"
 HERMES_DIR = REPO_ROOT / "modules" / "hermes-agent"
 PAPERCLIP_DOCKER_DIR = REPO_ROOT / "modules" / "paperclip" / "docker"
-
-HONCHO_PG_CONTAINER = "1215-honcho-pg"
-HONCHO_RUNTIME_ENV_PATH = Path("/tmp/honcho-runtime.env")
-HONCHO_API_LOG = Path("/tmp/honcho-api-persistent.log")
-HONCHO_DERIVER_LOG = Path("/tmp/honcho-deriver-persistent.log")
-HONCHO_API_PID = Path("/tmp/honcho-api.pid")
-HONCHO_DERIVER_PID = Path("/tmp/honcho-deriver.pid")
 
 HONCHO_HEALTH_URL = "http://127.0.0.1:18000/health"
 PAPERCLIP_HEALTH_URL = "http://127.0.0.1:3100/api/health"
@@ -73,152 +80,22 @@ def wait_http(url: str, timeout: int = 120) -> dict[str, object]:
     raise SystemExit(f"timed out waiting for {url}")
 
 
-def ensure_honcho_pgvector() -> None:
-    names = run(["docker", "ps", "-a", "--format", "{{.Names}}"]).stdout.splitlines()
-    if HONCHO_PG_CONTAINER not in names:
-        run(
-            [
-                "docker",
-                "run",
-                "-d",
-                "--name",
-                HONCHO_PG_CONTAINER,
-                "-e",
-                "POSTGRES_USER=honcho",
-                "-e",
-                "POSTGRES_PASSWORD=honcho",
-                "-e",
-                "POSTGRES_DB=honcho",
-                "-p",
-                "55432:5432",
-                "pgvector/pgvector:pg17",
-            ]
-        )
-    else:
-        running = (
-            run(["docker", "inspect", "-f", "{{.State.Running}}", HONCHO_PG_CONTAINER], check=False)
-            .stdout.strip()
-            .lower()
-        )
-        if running != "true":
-            run(["docker", "start", HONCHO_PG_CONTAINER])
+def wait_for_honcho() -> dict[str, object]:
+    """Confirm the host-native Honcho (systemd --user) is healthy.
 
-    for _ in range(60):
-        probe = run(
-            ["docker", "exec", HONCHO_PG_CONTAINER, "pg_isready", "-U", "honcho", "-d", "honcho"],
-            check=False,
-        )
-        if probe.returncode == 0:
-            break
-        time.sleep(1)
-    else:
-        raise SystemExit("honcho pgvector container did not become ready")
-
-    run(
-        [
-            "docker",
-            "exec",
-            HONCHO_PG_CONTAINER,
-            "psql",
-            "-U",
-            "honcho",
-            "-d",
-            "honcho",
-            "-c",
-            "CREATE EXTENSION IF NOT EXISTS vector;",
-        ]
-    )
-
-
-def build_honcho_runtime_env(openrouter_api_key: str) -> dict[str, str]:
-    env = {
-        "DB_CONNECTION_URI": "postgresql+psycopg://honcho:honcho@127.0.0.1:55432/honcho",
-        "AUTH_USE_AUTH": "false",
-        "LOG_LEVEL": "INFO",
-        "VECTOR_STORE_TYPE": "pgvector",
-        "LLM_OPENAI_COMPATIBLE_BASE_URL": "https://openrouter.ai/api/v1",
-        "LLM_OPENAI_COMPATIBLE_API_KEY": openrouter_api_key,
-        "LLM_EMBEDDING_PROVIDER": "openrouter",
-        "DERIVER_PROVIDER": "custom",
-        "DERIVER_MODEL": "openai/gpt-4o-mini",
-        "SUMMARY_PROVIDER": "custom",
-        "SUMMARY_MODEL": "openai/gpt-4o-mini",
-        "DREAM_PROVIDER": "custom",
-        "DREAM_MODEL": "openai/gpt-4o-mini",
-        "DREAM_DEDUCTION_MODEL": "openai/gpt-4o-mini",
-        "DREAM_INDUCTION_MODEL": "openai/gpt-4o-mini",
-    }
-    for level in ("minimal", "low", "medium", "high", "max"):
-        env[f"DIALECTIC_LEVELS__{level}__PROVIDER"] = "custom"
-        env[f"DIALECTIC_LEVELS__{level}__MODEL"] = "openai/gpt-4o-mini"
-        env[f"DIALECTIC_LEVELS__{level}__THINKING_BUDGET_TOKENS"] = "0"
-        env[f"DIALECTIC_LEVELS__{level}__MAX_TOOL_ITERATIONS"] = "1"
-    return env
-
-
-def write_runtime_env(path: Path, values: dict[str, str]) -> None:
-    lines = [f"{key}={value}" for key, value in values.items()]
-    path.write_text("\n".join(lines) + "\n")
-
-
-def terminate_pidfile(path: Path) -> None:
-    if not path.exists():
-        return
+    Unlike earlier versions of this script, it does NOT start Honcho;
+    that is managed by stack/services/honcho/honcho.service. Give a
+    clear pointer back to the installer if the service isn't up.
+    """
     try:
-        pid = int(path.read_text().strip())
-    except Exception:
-        return
-    try:
-        os.kill(pid, signal.SIGTERM)
-    except ProcessLookupError:
-        pass
-    except Exception:
-        pass
-
-
-def start_honcho_services(runtime_env: dict[str, str]) -> dict[str, object]:
-    write_runtime_env(HONCHO_RUNTIME_ENV_PATH, runtime_env)
-    terminate_pidfile(HONCHO_API_PID)
-    terminate_pidfile(HONCHO_DERIVER_PID)
-
-    run(["uv", "sync"], cwd=HONCHO_DIR)
-
-    migrate_env = os.environ.copy()
-    migrate_env.update(runtime_env)
-    run(["uv", "run", "alembic", "upgrade", "head"], cwd=HONCHO_DIR, env=migrate_env)
-
-    api_cmd = (
-        f"set -a; source {HONCHO_RUNTIME_ENV_PATH}; set +a; "
-        "uv run fastapi run src/main.py --host 127.0.0.1 --port 18000"
-    )
-    deriver_cmd = (
-        f"set -a; source {HONCHO_RUNTIME_ENV_PATH}; set +a; "
-        "uv run python -m src.deriver"
-    )
-    with HONCHO_API_LOG.open("a") as api_log:
-        api_proc = subprocess.Popen(
-            ["bash", "-lc", api_cmd],
-            cwd=str(HONCHO_DIR),
-            stdout=api_log,
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
-            text=True,
+        return wait_http(HONCHO_HEALTH_URL, timeout=90)
+    except SystemExit as exc:
+        raise SystemExit(
+            f"{exc}\n\nHoncho is expected to be running as a systemd --user service. "
+            "Install and start it with:\n"
+            "  bash stack/services/honcho/install.sh\n"
+            "  systemctl --user enable --now honcho honcho-deriver"
         )
-    with HONCHO_DERIVER_LOG.open("a") as deriver_log:
-        deriver_proc = subprocess.Popen(
-            ["bash", "-lc", deriver_cmd],
-            cwd=str(HONCHO_DIR),
-            stdout=deriver_log,
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
-            text=True,
-        )
-
-    HONCHO_API_PID.write_text(str(api_proc.pid))
-    HONCHO_DERIVER_PID.write_text(str(deriver_proc.pid))
-
-    health = wait_http(HONCHO_HEALTH_URL, timeout=90)
-    return {"pid_api": api_proc.pid, "pid_deriver": deriver_proc.pid, "health": health}
 
 
 def configure_hermes(openrouter_api_key: str, model: str) -> dict[str, object]:
@@ -350,8 +227,7 @@ def main() -> int:
     if not openrouter_api_key:
         raise SystemExit("OPENROUTER_API_KEY is empty in stack/prototype-local/.env")
 
-    ensure_honcho_pgvector()
-    honcho_info = start_honcho_services(build_honcho_runtime_env(openrouter_api_key))
+    honcho_info = {"health": wait_for_honcho()}
     hermes_info = configure_hermes(openrouter_api_key, args.model)
     paperclip_info = start_paperclip(openrouter_api_key, Path(args.paperclip_data_dir), args.paperclip_auth_secret)
 

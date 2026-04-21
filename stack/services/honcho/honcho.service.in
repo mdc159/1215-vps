@@ -11,12 +11,14 @@ Wants=network-online.target
 Type=simple
 WorkingDirectory=@HONCHO_DIR@
 EnvironmentFile=@ENV_FILE@
+# Alembic is idempotent; running on every start catches schema drift after
+# a Honcho submodule update without needing a separate one-shot unit.
+ExecStartPre=@UV_BIN@ run alembic upgrade head
 ExecStart=@UV_BIN@ run fastapi run src/main.py --host 127.0.0.1 --port 18000
 Restart=on-failure
 RestartSec=3
-# Honcho boot includes alembic migrations the first time the DB is empty,
-# which can take ~30s.
-TimeoutStartSec=180
+# First-run migrations against an empty DB can take ~30s; keep slack.
+TimeoutStartSec=240
 
 [Install]
 WantedBy=default.target
