@@ -31,9 +31,7 @@
     "builder": {
       "summary": "Page-build and packaging workflows.",
       "compose_profiles": [],
-      "compose_files": [
-        "stack/roles/builder/docker-compose.role.yml"
-      ]
+      "compose_files": []
     },
     "tools": {
       "summary": "Authoring, debugging, and MCP surfaces.",
